@@ -153,38 +153,6 @@ The frontend application will run on `http://localhost:5173`.
 
 ---
 
-## 🔑 Default Administrator Credentials
-
-- **Username:** `admin`
-- **Password:** `admin123` *(configurable via `ADMIN_PASSWORD_HASH` in backend `.env`)*
-
----
-
-## 🌐 Remote GitHub Push Instructions
-
-If you are initializing or updating the remote repository on GitHub:
-
-```bash
-# 1. Ensure you are in the project root
-cd attendance-system
-
-# 2. Check git status
-git status
-
-# 3. Add files to staging
-git add .
-
-# 4. Commit changes
-git commit -m "feat: complete attendance portal with multi-plant historical persistence & auth"
-
-# 5. Set or verify remote URL (if not already set)
-git remote set-url origin https://github.com/bugOpsX/ERP.git
-
-# 6. Push to remote repository
-git push -u origin main
-```
-
----
 
 ## 📄 License
 
