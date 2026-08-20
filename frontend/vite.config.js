@@ -6,7 +6,7 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
-    allowedHosts: ["pamila-intercalary-crabbily.ngrok-free.dev"]
+    allowedHosts: ["attendance.bugopsx.in", ".bugopsx.in", "localhost", "127.0.0.1"]
   }
 })
 

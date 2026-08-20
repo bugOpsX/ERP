@@ -15,6 +15,8 @@ const WorkerDetailDrawer = ({
 }) => {
   if (!open || !worker) return null;
 
+  const gatePass = worker.GatePass || worker.WISA || '—';
+
   return (
     <div className="fixed inset-0 z-50 overflow-hidden select-none">
       {/* Backdrop Overlay */}
@@ -34,7 +36,7 @@ const WorkerDetailDrawer = ({
                   {worker.Name || 'Worker Card'}
                 </h2>
                 <span className="font-mono text-xs px-2.5 py-0.5 rounded bg-[#1c2b3c] text-[#ffb690] border border-[#45464d]/30">
-                  WISA: {worker.WISA}
+                  Gate Pass: {gatePass}
                 </span>
               </div>
               <p className="text-xs text-[#909097] mt-0.5 flex items-center gap-1.5">

@@ -1,216 +1,456 @@
 export const mockAttendanceData = [
   {
+    "BlastFurnace": "BF-2",
+    "GatePass": "11000388985",
     "WISA": 3551801,
     "Name": "ANKUR SHARMA",
     "Designation": "Welder",
     "Department": "Production",
+    "AttendanceMonth": 6,
+    "AttendanceMonthName": "June",
+    "AttendanceYear": 2026,
+    "WorkingDays": 5,
+    "PresentDays": 5,
+    "SundayWorkingDays": 1,
+    "WeekdayManDays": 4.00,
+    "SundayHours": 4.16,
+    "SundayRatio": 0.83,
+    "TotalManDays": 4.83,
+    "NightShifts": 4,
     "Attendance": [
       {
         "Date": "01-06-2026",
+        "DayName": "MON",
+        "IsSunday": false,
         "DayIn": "08:35",
         "DayOut": "19:42",
         "NightIn": "20:05",
-        "NightOut": "01:28"
+        "NightOut": "01:28",
+        "ShiftType": "DAY_NIGHT",
+        "WeekdayManDay": 1.00,
+        "SundayHours": 0,
+        "SundayRatio": 0,
+        "ManDay": 1.00
       },
       {
         "Date": "02-06-2026",
+        "DayName": "TUE",
+        "IsSunday": false,
         "DayIn": "08:30",
         "DayOut": "19:30",
         "NightIn": "20:00",
-        "NightOut": "01:00"
+        "NightOut": "01:00",
+        "ShiftType": "DAY_NIGHT",
+        "WeekdayManDay": 1.00,
+        "SundayHours": 0,
+        "SundayRatio": 0,
+        "ManDay": 1.00
       },
       {
         "Date": "03-06-2026",
+        "DayName": "WED",
+        "IsSunday": false,
         "DayIn": "08:45",
         "DayOut": "19:50",
         "NightIn": "20:10",
-        "NightOut": "01:30"
+        "NightOut": "01:30",
+        "ShiftType": "DAY_NIGHT",
+        "WeekdayManDay": 1.00,
+        "SundayHours": 0,
+        "SundayRatio": 0,
+        "ManDay": 1.00
       },
       {
         "Date": "04-06-2026",
+        "DayName": "THU",
+        "IsSunday": false,
         "DayIn": "08:28",
         "DayOut": "19:25",
         "NightIn": "",
-        "NightOut": ""
+        "NightOut": "",
+        "ShiftType": "DAY",
+        "WeekdayManDay": 1.00,
+        "SundayHours": 0,
+        "SundayRatio": 0,
+        "ManDay": 1.00
       },
       {
-        "Date": "05-06-2026",
-        "DayIn": "08:32",
-        "DayOut": "19:40",
-        "NightIn": "20:15",
-        "NightOut": "01:45"
+        "Date": "07-06-2026",
+        "DayName": "SUN",
+        "IsSunday": true,
+        "DayIn": "08:30",
+        "DayOut": "12:40",
+        "NightIn": "",
+        "NightOut": "",
+        "ShiftType": "SUNDAY",
+        "WeekdayManDay": 0,
+        "SundayHours": 4.16,
+        "SundayRatio": 0.83,
+        "ManDay": 0.83
       }
     ]
   },
   {
+    "BlastFurnace": "BF-2",
+    "GatePass": "11000388986",
     "WISA": 3551802,
     "Name": "ROHIT KUMAR",
     "Designation": "CNC Operator",
     "Department": "Machining",
+    "AttendanceMonth": 6,
+    "AttendanceMonthName": "June",
+    "AttendanceYear": 2026,
+    "WorkingDays": 5,
+    "PresentDays": 5,
+    "SundayWorkingDays": 1,
+    "WeekdayManDays": 4.00,
+    "SundayHours": 5.00,
+    "SundayRatio": 1.00,
+    "TotalManDays": 5.00,
+    "NightShifts": 1,
     "Attendance": [
       {
         "Date": "01-06-2026",
+        "DayName": "MON",
+        "IsSunday": false,
         "DayIn": "08:15",
         "DayOut": "18:30",
         "NightIn": "",
-        "NightOut": ""
+        "NightOut": "",
+        "ShiftType": "DAY",
+        "WeekdayManDay": 1.00,
+        "SundayHours": 0,
+        "SundayRatio": 0,
+        "ManDay": 1.00
       },
       {
         "Date": "02-06-2026",
+        "DayName": "TUE",
+        "IsSunday": false,
         "DayIn": "08:20",
         "DayOut": "18:45",
         "NightIn": "",
-        "NightOut": ""
+        "NightOut": "",
+        "ShiftType": "DAY",
+        "WeekdayManDay": 1.00,
+        "SundayHours": 0,
+        "SundayRatio": 0,
+        "ManDay": 1.00
       },
       {
         "Date": "03-06-2026",
+        "DayName": "WED",
+        "IsSunday": false,
         "DayIn": "08:10",
         "DayOut": "18:25",
         "NightIn": "",
-        "NightOut": ""
+        "NightOut": "",
+        "ShiftType": "DAY",
+        "WeekdayManDay": 1.00,
+        "SundayHours": 0,
+        "SundayRatio": 0,
+        "ManDay": 1.00
       },
       {
         "Date": "04-06-2026",
+        "DayName": "THU",
+        "IsSunday": false,
         "DayIn": "08:18",
         "DayOut": "18:40",
         "NightIn": "",
-        "NightOut": ""
+        "NightOut": "",
+        "ShiftType": "DAY",
+        "WeekdayManDay": 1.00,
+        "SundayHours": 0,
+        "SundayRatio": 0,
+        "ManDay": 1.00
       },
       {
-        "Date": "05-06-2026",
-        "DayIn": "08:25",
-        "DayOut": "18:50",
+        "Date": "07-06-2026",
+        "DayName": "SUN",
+        "IsSunday": true,
+        "DayIn": "08:00",
+        "DayOut": "13:00",
         "NightIn": "19:30",
-        "NightOut": "23:45"
+        "NightOut": "23:45",
+        "ShiftType": "SUNDAY",
+        "WeekdayManDay": 0,
+        "SundayHours": 5.00,
+        "SundayRatio": 1.00,
+        "ManDay": 1.00
       }
     ]
   },
   {
+    "BlastFurnace": "BF-3",
+    "GatePass": "11000388987",
     "WISA": 3551803,
     "Name": "AMIT SINGH",
     "Designation": "Quality Inspector",
     "Department": "Quality Assurance",
+    "AttendanceMonth": 6,
+    "AttendanceMonthName": "June",
+    "AttendanceYear": 2026,
+    "WorkingDays": 5,
+    "PresentDays": 5,
+    "SundayWorkingDays": 0,
+    "WeekdayManDays": 5.00,
+    "SundayHours": 0,
+    "SundayRatio": 0,
+    "TotalManDays": 5.00,
+    "NightShifts": 0,
     "Attendance": [
       {
         "Date": "01-06-2026",
+        "DayName": "MON",
+        "IsSunday": false,
         "DayIn": "09:00",
         "DayOut": "18:00",
         "NightIn": "",
-        "NightOut": ""
+        "NightOut": "",
+        "ShiftType": "DAY",
+        "WeekdayManDay": 1.00,
+        "SundayHours": 0,
+        "SundayRatio": 0,
+        "ManDay": 1.00
       },
       {
         "Date": "02-06-2026",
+        "DayName": "TUE",
+        "IsSunday": false,
         "DayIn": "08:55",
         "DayOut": "18:05",
         "NightIn": "",
-        "NightOut": ""
+        "NightOut": "",
+        "ShiftType": "DAY",
+        "WeekdayManDay": 1.00,
+        "SundayHours": 0,
+        "SundayRatio": 0,
+        "ManDay": 1.00
       },
       {
         "Date": "03-06-2026",
+        "DayName": "WED",
+        "IsSunday": false,
         "DayIn": "08:58",
         "DayOut": "18:10",
         "NightIn": "",
-        "NightOut": ""
+        "NightOut": "",
+        "ShiftType": "DAY",
+        "WeekdayManDay": 1.00,
+        "SundayHours": 0,
+        "SundayRatio": 0,
+        "ManDay": 1.00
       },
       {
         "Date": "04-06-2026",
+        "DayName": "THU",
+        "IsSunday": false,
         "DayIn": "09:05",
         "DayOut": "18:00",
         "NightIn": "",
-        "NightOut": ""
+        "NightOut": "",
+        "ShiftType": "DAY",
+        "WeekdayManDay": 1.00,
+        "SundayHours": 0,
+        "SundayRatio": 0,
+        "ManDay": 1.00
       },
       {
         "Date": "05-06-2026",
+        "DayName": "FRI",
+        "IsSunday": false,
         "DayIn": "08:50",
         "DayOut": "18:00",
         "NightIn": "",
-        "NightOut": ""
+        "NightOut": "",
+        "ShiftType": "DAY",
+        "WeekdayManDay": 1.00,
+        "SundayHours": 0,
+        "SundayRatio": 0,
+        "ManDay": 1.00
       }
     ]
   },
   {
+    "BlastFurnace": "BF-3",
+    "GatePass": "11000388988",
     "WISA": 3551804,
     "Name": "SUMIT PATEL",
     "Designation": "Assembly Technician",
     "Department": "Assembly",
+    "AttendanceMonth": 6,
+    "AttendanceMonthName": "June",
+    "AttendanceYear": 2026,
+    "WorkingDays": 5,
+    "PresentDays": 4,
+    "SundayWorkingDays": 1,
+    "WeekdayManDays": 3.00,
+    "SundayHours": 3.50,
+    "SundayRatio": 0.70,
+    "TotalManDays": 3.70,
+    "NightShifts": 3,
     "Attendance": [
       {
         "Date": "01-06-2026",
+        "DayName": "MON",
+        "IsSunday": false,
         "DayIn": "08:40",
         "DayOut": "19:50",
         "NightIn": "20:30",
-        "NightOut": "02:00"
+        "NightOut": "02:00",
+        "ShiftType": "DAY_NIGHT",
+        "WeekdayManDay": 1.00,
+        "SundayHours": 0,
+        "SundayRatio": 0,
+        "ManDay": 1.00
       },
       {
         "Date": "02-06-2026",
+        "DayName": "TUE",
+        "IsSunday": false,
         "DayIn": "08:35",
         "DayOut": "19:45",
         "NightIn": "20:20",
-        "NightOut": "01:50"
+        "NightOut": "01:50",
+        "ShiftType": "DAY_NIGHT",
+        "WeekdayManDay": 1.00,
+        "SundayHours": 0,
+        "SundayRatio": 0,
+        "ManDay": 1.00
       },
       {
         "Date": "03-06-2026",
+        "DayName": "WED",
+        "IsSunday": false,
         "DayIn": "",
         "DayOut": "",
         "NightIn": "",
-        "NightOut": ""
+        "NightOut": "",
+        "ShiftType": "ABSENT",
+        "WeekdayManDay": 0,
+        "SundayHours": 0,
+        "SundayRatio": 0,
+        "ManDay": 0
       },
       {
         "Date": "04-06-2026",
+        "DayName": "THU",
+        "IsSunday": false,
         "DayIn": "08:42",
         "DayOut": "19:35",
         "NightIn": "",
-        "NightOut": ""
+        "NightOut": "",
+        "ShiftType": "DAY",
+        "WeekdayManDay": 1.00,
+        "SundayHours": 0,
+        "SundayRatio": 0,
+        "ManDay": 1.00
       },
       {
-        "Date": "05-06-2026",
+        "Date": "07-06-2026",
+        "DayName": "SUN",
+        "IsSunday": true,
         "DayIn": "08:30",
-        "DayOut": "19:40",
+        "DayOut": "12:00",
         "NightIn": "20:00",
-        "NightOut": "01:30"
+        "NightOut": "01:30",
+        "ShiftType": "SUNDAY",
+        "WeekdayManDay": 0,
+        "SundayHours": 3.50,
+        "SundayRatio": 0.70,
+        "ManDay": 0.70
       }
     ]
   },
   {
+    "BlastFurnace": "BF-2",
+    "GatePass": "11000388989",
     "WISA": 3551805,
     "Name": "PRIYA VERMA",
     "Designation": "Shift Supervisor",
     "Department": "Production",
+    "AttendanceMonth": 6,
+    "AttendanceMonthName": "June",
+    "AttendanceYear": 2026,
+    "WorkingDays": 5,
+    "PresentDays": 5,
+    "SundayWorkingDays": 0,
+    "WeekdayManDays": 5.00,
+    "SundayHours": 0,
+    "SundayRatio": 0,
+    "TotalManDays": 5.00,
+    "NightShifts": 0,
     "Attendance": [
       {
         "Date": "01-06-2026",
+        "DayName": "MON",
+        "IsSunday": false,
         "DayIn": "08:00",
         "DayOut": "17:00",
         "NightIn": "",
-        "NightOut": ""
+        "NightOut": "",
+        "ShiftType": "DAY",
+        "WeekdayManDay": 1.00,
+        "SundayHours": 0,
+        "SundayRatio": 0,
+        "ManDay": 1.00
       },
       {
         "Date": "02-06-2026",
+        "DayName": "TUE",
+        "IsSunday": false,
         "DayIn": "08:00",
         "DayOut": "17:00",
         "NightIn": "",
-        "NightOut": ""
+        "NightOut": "",
+        "ShiftType": "DAY",
+        "WeekdayManDay": 1.00,
+        "SundayHours": 0,
+        "SundayRatio": 0,
+        "ManDay": 1.00
       },
       {
         "Date": "03-06-2026",
+        "DayName": "WED",
+        "IsSunday": false,
         "DayIn": "08:00",
         "DayOut": "17:00",
         "NightIn": "",
-        "NightOut": ""
+        "NightOut": "",
+        "ShiftType": "DAY",
+        "WeekdayManDay": 1.00,
+        "SundayHours": 0,
+        "SundayRatio": 0,
+        "ManDay": 1.00
       },
       {
         "Date": "04-06-2026",
+        "DayName": "THU",
+        "IsSunday": false,
         "DayIn": "08:00",
         "DayOut": "17:00",
         "NightIn": "",
-        "NightOut": ""
+        "NightOut": "",
+        "ShiftType": "DAY",
+        "WeekdayManDay": 1.00,
+        "SundayHours": 0,
+        "SundayRatio": 0,
+        "ManDay": 1.00
       },
       {
         "Date": "05-06-2026",
+        "DayName": "FRI",
+        "IsSunday": false,
         "DayIn": "08:00",
         "DayOut": "17:00",
         "NightIn": "",
-        "NightOut": ""
+        "NightOut": "",
+        "ShiftType": "DAY",
+        "WeekdayManDay": 1.00,
+        "SundayHours": 0,
+        "SundayRatio": 0,
+        "ManDay": 1.00
       }
     ]
   }

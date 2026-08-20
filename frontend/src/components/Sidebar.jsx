@@ -80,6 +80,35 @@ const Sidebar = ({ isMock, activeTab = 'attendance' }) => {
           <span className="material-symbols-outlined text-[20px]">analytics</span>
           <span className="text-xs uppercase tracking-wider font-semibold">Reports</span>
         </a>
+
+        {/* Data Management Section */}
+        <div className="pt-4 pb-1">
+          <p className="px-4 text-[9px] font-bold uppercase tracking-widest text-[#909097]/70 mb-2">
+            Data Management
+          </p>
+          <a
+            href="#upload"
+            className={`group flex items-center gap-3 px-4 py-3 rounded transition-all text-sm font-medium ${
+              activeTab === 'upload'
+                ? 'text-[#ffb690] font-bold border-r-2 border-[#ffb690] bg-[#273647]'
+                : 'text-[#c6c6cd] hover:bg-[#273647] hover:text-[#d4e4fa]'
+            }`}
+          >
+            <span className="material-symbols-outlined text-[20px]">cloud_upload</span>
+            <span className="text-xs uppercase tracking-wider font-semibold">Upload Attendance</span>
+          </a>
+          <a
+            href="#history"
+            className={`group flex items-center gap-3 px-4 py-3 rounded transition-all text-sm font-medium ${
+              activeTab === 'history'
+                ? 'text-[#ffb690] font-bold border-r-2 border-[#ffb690] bg-[#273647]'
+                : 'text-[#c6c6cd] hover:bg-[#273647] hover:text-[#d4e4fa]'
+            }`}
+          >
+            <span className="material-symbols-outlined text-[20px]">history</span>
+            <span className="text-xs uppercase tracking-wider font-semibold">Import History</span>
+          </a>
+        </div>
       </nav>
 
       {/* System Status Container */}

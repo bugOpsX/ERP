@@ -2,8 +2,8 @@ import React, { useMemo } from 'react';
 import { useSite } from '../context/SiteContext';
 
 /**
- * KPI Metric Cards matching Stitch design system.
- * Displays high-density summary statistics across the active workforce.
+ * KPI Metric Cards matching industrial design system.
+ * Pure presentation component displaying high-density summary statistics using API values.
  */
 const KpiCards = ({ workers = [] }) => {
   const { currentSite } = useSite();
@@ -12,51 +12,36 @@ const KpiCards = ({ workers = [] }) => {
   const stats = useMemo(() => {
     const total = workers.length;
     if (total === 0) {
-      return { present: 0, total: 0, nightShifts: 0, absentRate: '0.0%' };
+      return { present: 0, total: 0, nightShifts: 0, totalManDays: '0.00' };
     }
 
     let present = 0;
     let nightShifts = 0;
-    let absent = 0;
+    let sumTotalManDays = 0;
 
     workers.forEach((w) => {
-      const records = Array.isArray(w.Attendance) ? w.Attendance : [];
-      let workerPresentDays = 0;
-      let workerNightShifts = 0;
+      const pDays = w.PresentDays ?? (Array.isArray(w.Attendance) ? w.Attendance.filter(r => r.DayIn || r.NightIn).length : 0);
+      const nShifts = w.NightShifts ?? (Array.isArray(w.Attendance) ? w.Attendance.filter(r => r.NightIn).length : 0);
+      const mDays = typeof w.TotalManDays === 'number' ? w.TotalManDays : parseFloat(w.TotalManDays || 0);
 
-      records.forEach((r) => {
-        if (r.DayIn || r.NightIn) {
-          workerPresentDays++;
-        }
-        if (r.NightIn) {
-          workerNightShifts++;
-        }
-      });
-
-      if (records.length > 0 && workerPresentDays > 0) {
+      if (pDays > 0) {
         present++;
-      } else if (records.length > 0) {
-        absent++;
       }
-
-      if (workerNightShifts > 0) {
-        nightShifts++;
-      }
+      nightShifts += nShifts;
+      sumTotalManDays += mDays;
     });
 
-    const absentRateVal = total > 0 ? ((absent / total) * 100).toFixed(1) : 0;
-
     return {
-      present: present || Math.round(total * 0.85),
+      present,
       total,
-      nightShifts: nightShifts || Math.round(total * 0.15),
-      absentRate: `${absentRateVal}%`,
+      nightShifts,
+      totalManDays: sumTotalManDays.toFixed(2),
     };
   }, [workers]);
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-      {/* Present Today */}
+      {/* Present Workforce */}
       <div className="bg-[#1c2b3c] p-5 rounded-xl border border-[#45464d]/20 inner-glow flex flex-col justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-[#909097] mb-2">
@@ -64,7 +49,7 @@ const KpiCards = ({ workers = [] }) => {
           </p>
           <div className="flex items-baseline gap-2">
             <span className="text-3xl font-bold text-[#d4e4fa]">{stats.present}</span>
-            <span className="text-emerald-400 text-xs font-semibold font-mono">+4.2%</span>
+            <span className="text-emerald-400 text-xs font-semibold font-mono">Active</span>
           </div>
         </div>
         <p className="text-[10px] font-semibold text-[#909097]/80 uppercase tracking-widest mt-4 pt-2 border-t border-[#45464d]/10 flex items-center gap-1">
@@ -98,7 +83,7 @@ const KpiCards = ({ workers = [] }) => {
           </p>
           <div className="flex items-baseline gap-2">
             <span className="text-3xl font-bold text-[#d4e4fa]">{stats.nightShifts}</span>
-            <span className="text-[#ffb690] text-xs font-mono">Active</span>
+            <span className="text-[#ffb690] text-xs font-mono">Shifts</span>
           </div>
         </div>
         <p className="text-[10px] font-semibold text-[#909097]/80 uppercase tracking-widest mt-4 pt-2 border-t border-[#45464d]/10 flex items-center gap-1">
@@ -107,15 +92,15 @@ const KpiCards = ({ workers = [] }) => {
         </p>
       </div>
 
-      {/* Absence Rate */}
-      <div className="bg-[#1c2b3c] p-5 rounded-xl border border-[#45464d]/20 inner-glow flex flex-col justify-between">
+      {/* Total Payroll Man Days */}
+      <div className="bg-[#1c2b3c] p-5 rounded-xl border border-[#45464d]/20 inner-glow flex flex-col justify-between border-l-4 border-l-[#ffb690]">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-[#909097] mb-2">
-            Absence Rate
+          <p className="text-xs font-semibold uppercase tracking-wider text-[#ffb690] mb-2">
+            Total Payroll Man Days
           </p>
           <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-bold text-[#d4e4fa]">{stats.absentRate}</span>
-            <span className="text-amber-400 text-xs font-mono">Telemetry</span>
+            <span className="text-3xl font-bold text-[#ffb690]">{stats.totalManDays}</span>
+            <span className="text-[#ffb690]/80 text-xs font-mono">Man Days</span>
           </div>
         </div>
         <p className="text-[10px] font-semibold text-[#909097]/80 uppercase tracking-widest mt-4 pt-2 border-t border-[#45464d]/10 flex items-center gap-1">

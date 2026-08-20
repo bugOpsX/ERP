@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useSite } from '../context/SiteContext';
+import { useAuth } from '../context/AuthContext';
 
 /**
  * Top Navigation Bar matching Stitch design.
@@ -19,6 +20,9 @@ const Header = ({
     loading,
     refresh
   } = useSite();
+
+  const { user, logout } = useAuth();
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   return (
     <header className="fixed top-0 right-0 left-[240px] h-16 bg-[#051424] border-b border-[#45464d]/20 z-40 flex items-center justify-between px-8">
@@ -98,6 +102,45 @@ const Header = ({
           <button className="p-2 text-[#c6c6cd] hover:text-[#ffb690] hover:bg-[#1c2b3c] rounded transition-colors">
             <span className="material-symbols-outlined text-[20px]">settings</span>
           </button>
+        </div>
+
+        {/* Administrator Profile & Logout Dropdown */}
+        <div className="relative border-l border-[#45464d]/20 pl-3">
+          <button
+            onClick={() => setUserMenuOpen(!userMenuOpen)}
+            className="flex items-center gap-2 px-3 py-1.5 bg-[#0d1c2d] hover:bg-[#16273b] border border-[#233549] hover:border-[#ffb690]/40 rounded transition-all cursor-pointer text-xs font-semibold text-[#d4e4fa]"
+          >
+            <span className="material-symbols-outlined text-[18px] text-[#ffb690]">
+              account_circle
+            </span>
+            <span>{user?.username || 'Admin'}</span>
+            <span className="material-symbols-outlined text-[16px] text-[#8ca3ba]">
+              arrow_drop_down
+            </span>
+          </button>
+
+          {userMenuOpen && (
+            <div className="absolute right-0 mt-2 w-52 bg-[#0d1c2d] border border-[#233549] rounded-xl shadow-2xl p-3 z-50 animate-fadeIn">
+              <div className="px-2 py-1.5 mb-2 border-b border-[#1c2c3e]">
+                <p className="text-[11px] font-bold text-[#8ca3ba] uppercase tracking-wider">
+                  Administrator
+                </p>
+                <p className="text-xs font-semibold text-white mt-0.5">
+                  Logged in as: <span className="text-[#ffb690]">{user?.username || 'admin'}</span>
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setUserMenuOpen(false);
+                  logout();
+                }}
+                className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[18px]">logout</span>
+                Logout
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </header>

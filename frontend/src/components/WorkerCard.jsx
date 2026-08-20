@@ -1,28 +1,25 @@
 import React from 'react';
 
 /**
- * WorkerCard component matching Stitch UI design.
- * Dynamically populated from worker API data.
+ * WorkerCard component matching industrial UI design.
+ * Pure presentation component using backend API values directly.
  */
 const WorkerCard = ({ worker, onViewDetails, onDownloadSingle, isDownloading }) => {
   if (!worker) return null;
 
   const records = Array.isArray(worker.Attendance) ? worker.Attendance : [];
-  const totalDays = records.length || 30;
-  
-  // Calculate attendance statistics dynamically
-  const presentDays = records.reduce((acc, curr) => {
-    return (curr.DayIn || curr.NightIn) ? acc + 1 : acc;
-  }, 0);
+  const workingDays = worker.WorkingDays ?? (records.length || 30);
+  const presentDays = worker.PresentDays ?? 0;
+  const totalManDays = worker.TotalManDays != null ? worker.TotalManDays : presentDays;
+  const gatePass = worker.GatePass || worker.WISA || '—';
 
-  const attendanceRatio = totalDays > 0 ? (presentDays / totalDays) : 0;
+  const attendanceRatio = workingDays > 0 ? (presentDays / workingDays) : 0;
 
-  // Determine status badge: Present (> 70%), Late/Partial (> 40%), Absent
   let status = 'PRESENT';
   let badgeStyle = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
   let dotStyle = 'bg-emerald-500';
 
-  if (attendanceRatio === 0 && totalDays > 0) {
+  if (presentDays === 0 && workingDays > 0) {
     status = 'ABSENT';
     badgeStyle = 'bg-rose-500/10 text-rose-400 border-rose-500/20';
     dotStyle = 'bg-rose-500';
@@ -35,7 +32,7 @@ const WorkerCard = ({ worker, onViewDetails, onDownloadSingle, isDownloading }) 
   return (
     <div className="bg-[#122131] p-6 rounded-xl border border-[#45464d]/20 hover:border-[#ffb690]/40 transition-all group flex flex-col justify-between inner-glow h-full">
       <div>
-        {/* Card Header: Status Badge, Blast Furnace & WISA ID */}
+        {/* Card Header: Status Badge, Blast Furnace & Gate Pass */}
         <div className="flex justify-between items-start mb-4">
           <div className="flex items-center gap-2">
             <div className={`flex items-center gap-2 px-2.5 py-1 rounded-full text-[10px] font-bold border ${badgeStyle}`}>
@@ -49,8 +46,8 @@ const WorkerCard = ({ worker, onViewDetails, onDownloadSingle, isDownloading }) 
               </div>
             )}
           </div>
-          <span className="font-mono text-xs text-[#909097] bg-[#0d1c2d] px-2 py-0.5 rounded border border-[#45464d]/20">
-            WISA: {worker.WISA}
+          <span className="font-mono text-xs text-[#909097] bg-[#0d1c2d] px-2 py-0.5 rounded border border-[#45464d]/20" title={`WISA: ${worker.WISA}`}>
+            GP: {gatePass}
           </span>
         </div>
 
@@ -67,10 +64,10 @@ const WorkerCard = ({ worker, onViewDetails, onDownloadSingle, isDownloading }) 
       <div className="mt-6">
         <div className="flex justify-between mb-2">
           <span className="text-xs font-semibold text-[#c6c6cd] uppercase tracking-wider">
-            Monthly Attendance
+            Total Payroll
           </span>
-          <span className="text-xs font-mono text-[#d4e4fa] font-medium">
-            {presentDays} / {totalDays} Days
+          <span className="text-xs font-mono text-[#ffb690] font-bold">
+            {typeof totalManDays === 'number' ? totalManDays.toFixed(2) : totalManDays} Man Days
           </span>
         </div>
 
@@ -78,7 +75,7 @@ const WorkerCard = ({ worker, onViewDetails, onDownloadSingle, isDownloading }) 
         <div className="w-full bg-[#010f1f] h-1.5 rounded-full overflow-hidden mb-6">
           <div
             className="h-full bg-[#ffb690] transition-all duration-700"
-            style={{ width: `${Math.min(100, Math.max(5, (presentDays / Math.max(1, totalDays)) * 100))}%` }}
+            style={{ width: `${Math.min(100, Math.max(5, (presentDays / Math.max(1, workingDays)) * 100))}%` }}
           />
         </div>
 
@@ -96,7 +93,7 @@ const WorkerCard = ({ worker, onViewDetails, onDownloadSingle, isDownloading }) 
             onClick={() => onDownloadSingle(worker)}
             disabled={isDownloading}
             className="col-span-1 py-2.5 bg-[#1c2b3c] border border-[#45464d]/30 rounded text-[#c6c6cd] hover:text-[#ffb690] hover:border-[#ffb690]/40 transition-all flex items-center justify-center cursor-pointer"
-            title={`Download ${worker.Name}_${worker.WISA}.pdf`}
+            title={`Download ${worker.Name}_${gatePass}.pdf`}
           >
             <span className="material-symbols-outlined text-[18px]">
               {isDownloading ? 'hourglass_top' : 'download'}
