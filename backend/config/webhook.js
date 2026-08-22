@@ -2,5 +2,5 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 export default {
-  attendanceWebhook: process.env.N8N_ATTENDANCE_WEBHOOK_URL || "https://n8n.bugopsx.in/webhook/Attendance-imp"
+  attendanceWebhook: process.env.N8N_ATTENDANCE_WEBHOOK_URL || ""
 };

@@ -43,13 +43,17 @@ const LoginPage = ({ onLoginSuccess }) => {
       <div className="w-full max-w-md bg-[#0d1c2d] border border-[#233549] rounded-2xl p-8 shadow-2xl relative z-10 backdrop-blur-xl">
         {/* Brand Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-[#ffb690]/10 border border-[#ffb690]/30 text-[#ffb690] mb-4 shadow-lg shadow-[#ffb690]/5">
-            <span className="material-symbols-outlined text-[32px]">factory</span>
+          <div className="inline-flex items-center justify-center p-3 rounded-3xl bg-[#051424] border border-white/20 mb-4 shadow-2xl overflow-hidden">
+            <img
+              src="/logo.png"
+              alt="Kamla Enterprises Logo"
+              className="w-40 h-40 object-contain"
+            />
           </div>
           <h1 className="text-2xl font-black tracking-wider text-white uppercase mb-1">
             Kamla Enterprises
           </h1>
-          <p className="text-xs font-semibold text-[#8ca3ba] uppercase tracking-widest">
+          <p className="text-xs font-semibold text-white/80 uppercase tracking-widest">
             Labor Management System
           </p>
           <div className="inline-block mt-3 px-3 py-1 bg-[#16273b] border border-[#2b3e55] rounded-full text-[11px] font-bold text-[#ffb690] uppercase tracking-widest">

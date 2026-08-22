@@ -40,12 +40,15 @@ export const importEngineService = {
     const existingImport = isDuplicate ? duplicateRes.rows[0] : null;
 
     // Get sheet record counts
-    const bf2Count = (workbook.sheets.find((s) => s.name === 'BF-2') || {}).recordCount || 0;
-    const bf3Count = (workbook.sheets.find((s) => s.name === 'BF-3') || {}).recordCount || 0;
+    const bf2Count = (workbook.sheets?.find((s) => s.name === 'BF-2') || {}).recordCount || 0;
+    const bf3Count = (workbook.sheets?.find((s) => s.name === 'BF-3') || {}).recordCount || 0;
 
     // Get plant_id from database
     const plantDbRes = await query('SELECT id FROM plants WHERE code = $1 LIMIT 1', [plant.code]);
     const plantId = plantDbRes.rows[0]?.id || null;
+
+    const workerCount = workbook.workerCount || workbook.uniqueWorkersCount || 0;
+    const totalRecords = workbook.totalRecords || (workerCount * (workbook.dailyAttendanceColumns || 31));
 
     // Save pending/validated import session into database
     await query(
@@ -63,8 +66,8 @@ export const importEngineService = {
         'validated',
         bf2Count,
         bf3Count,
-        workbook.uniqueWorkersCount,
-        workbook.totalRecords,
+        workerCount,
+        totalRecords,
         file.path,
       ]
     );
@@ -116,107 +119,150 @@ export const importEngineService = {
     const { temp_file_path: tempFilePath, plant_code: plantCode, month, year, file_name: fileName } = importSession;
 
     if (!tempFilePath || !fs.existsSync(tempFilePath)) {
-      throw new Error(`Temporary upload file for session "${uploadId}" is no longer available.`);
+      throw new Error(`Temporary workbook file for session "${uploadId}" is missing or expired. Please upload again.`);
     }
 
-    // 2. Check duplicate import status
-    const existingImportRes = await query(
+    // 2. Check duplicate status prior to import execution
+    const duplicateRes = await query(
       `SELECT * FROM attendance_imports 
-       WHERE plant_code = $1 AND month = $2 AND year = $3 AND status = 'imported' AND upload_id != $4`,
-      [plantCode, month, year, uploadId]
+       WHERE plant_code = $1 AND month = $2 AND year = $3 AND status = 'imported' AND id != $4
+       LIMIT 1`,
+      [plantCode, month, year, importSession.id]
     );
 
-    if (existingImportRes.rows.length > 0 && !replaceExisting) {
-      const err = new Error(`Attendance data for month ${month}/${year} already exists in database.`);
+    if (duplicateRes.rows.length > 0 && !replaceExisting) {
+      const err = new Error(
+        `Attendance dataset for ${month}/${year} (${plantCode}) already exists. Set replaceExisting=true to overwrite.`
+      );
       err.statusCode = 409;
       err.isDuplicate = true;
       throw err;
     }
 
-    // 3. Begin Transaction
-    const client = await getClient();
+    // 3. Parse workbook with plant parser
+    const parser = ImporterRegistry.getParserForPlant(plantCode);
+    const workbookObj = XLSX.readFile(tempFilePath);
+    const parseResult = parser.parse(workbookObj);
 
+    if (!parseResult.success) {
+      throw new Error(`Failed to parse attendance spreadsheet for plant "${plantCode}".`);
+    }
+
+    const { records, workers } = parseResult;
+
+    // 4. Begin PostgreSQL Transaction
+    const client = await getClient();
     try {
       await client.query('BEGIN');
 
-      // If replacing existing import, mark old imports as replaced and delete their attendance records
-      if (existingImportRes.rows.length > 0 && replaceExisting) {
-        for (const oldImp of existingImportRes.rows) {
-          // Delete old attendance records
-          await client.query('DELETE FROM attendance_records WHERE import_id = $1', [oldImp.id]);
-          // Mark old import status as 'replaced'
-          await client.query(
-            'UPDATE attendance_imports SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
-            ['replaced', oldImp.id]
-          );
-        }
+      // Resolve plant_id
+      const plantDbRes = await client.query('SELECT id FROM plants WHERE code = $1 LIMIT 1', [plantCode]);
+      const plantId = plantDbRes.rows[0]?.id || null;
+
+      // Resolve sites map (e.g. 'BF-2' -> site_id, 'BF-3' -> site_id, 'KORBA-MAIN' -> site_id)
+      const sitesRes = await client.query('SELECT id, name, code FROM sites WHERE plant_id = $1', [plantId]);
+      const sitesMap = new Map();
+      sitesRes.rows.forEach((s) => {
+        sitesMap.set(s.code.toUpperCase(), s.id);
+        sitesMap.set(s.name.toUpperCase(), s.id);
+      });
+
+      // 5. Handle version replacement if replacing existing dataset
+      if (replaceExisting && duplicateRes.rows.length > 0) {
+        const oldImportId = duplicateRes.rows[0].id;
+        console.log(`[IMPORT ENGINE] Replacing existing active import #${oldImportId} for ${month}/${year} (${plantCode}).`);
+
+        // Mark old import record status as 'replaced'
+        await client.query(
+          `UPDATE attendance_imports SET status = 'replaced', updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
+          [oldImportId]
+        );
       }
 
-      // Update current import session status to 'importing'
-      await client.query(
-        'UPDATE attendance_imports SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
-        ['importing', importSession.id]
-      );
-
-      // 4. Read Excel workbook and run parser
-      const workbook = XLSX.readFile(tempFilePath);
-      const parser = ImporterRegistry.getParserForPlant(plantCode);
-      const parseResult = parser.parse(workbook);
-      const { records } = parseResult;
-
-      // 5. Resolve site/unit mapping from DB
-      const sitesRes = await client.query('SELECT * FROM sites');
-      const sitesMap = new Map();
-      sitesRes.rows.forEach((s) => sitesMap.set(s.code.toUpperCase(), s.id));
-
-      // 6. Batch Upsert Workers
-      const workerIdMap = new Map(); // key: "BF-2:WISA123" -> workerId
+      // 6. Upsert Workers (Plant-aware worker resolution)
       const uniqueWorkersMap = new Map();
-
-      records.forEach((rec) => {
-        const key = `${rec.blastFurnace.toUpperCase()}:${rec.wisa.toUpperCase()}`;
+      workers.forEach((w) => {
+        const key = plantCode === 'PLANT_B'
+          ? `KORBA:${(w.employeeId || w.wisa).toUpperCase()}`
+          : `${(w.blastFurnace || 'BF-2').toUpperCase()}:${w.wisa.toUpperCase()}`;
         if (!uniqueWorkersMap.has(key)) {
-          uniqueWorkersMap.set(key, rec);
+          uniqueWorkersMap.set(key, w);
         }
       });
 
-      for (const [key, rec] of uniqueWorkersMap.entries()) {
-        const siteId = sitesMap.get(rec.blastFurnace.toUpperCase()) || null;
+      const workerIdMap = new Map();
 
-        const workerRes = await client.query(
-          `INSERT INTO workers (gate_pass, wisa, name, designation, department, blast_furnace, site_id)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)
-           ON CONFLICT (blast_furnace, wisa) DO UPDATE SET
-             gate_pass = EXCLUDED.gate_pass,
-             name = EXCLUDED.name,
-             designation = EXCLUDED.designation,
-             department = EXCLUDED.department,
-             site_id = COALESCE(EXCLUDED.site_id, workers.site_id),
-             updated_at = CURRENT_TIMESTAMP
-           RETURNING id;`,
-          [rec.gatePass, rec.wisa, rec.name, rec.designation, rec.department, rec.blastFurnace, siteId]
-        );
+      if (plantCode === 'PLANT_B') {
+        // PLANT_B (Korba)
+        for (const [key, rec] of uniqueWorkersMap.entries()) {
+          const siteId = sitesMap.get('KORBA-MAIN') || sitesRes.rows[0]?.id || null;
 
-        workerIdMap.set(key, workerRes.rows[0].id);
+          const workerRes = await client.query(
+            `INSERT INTO workers (employee_id, aadhaar_no, name, designation, category, sub_contractor_name, blast_furnace, site_id, plant_id)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+             ON CONFLICT (plant_id, employee_id) WHERE employee_id IS NOT NULL DO UPDATE SET
+               aadhaar_no = EXCLUDED.aadhaar_no,
+               name = EXCLUDED.name,
+               designation = EXCLUDED.designation,
+               category = EXCLUDED.category,
+               sub_contractor_name = EXCLUDED.sub_contractor_name,
+               site_id = COALESCE(EXCLUDED.site_id, workers.site_id),
+               updated_at = CURRENT_TIMESTAMP
+             RETURNING id;`,
+            [rec.employeeId, rec.aadhaarNo, rec.name, rec.designation, rec.category, rec.subContractorName, rec.blastFurnace, siteId, plantId]
+          );
+
+          workerIdMap.set(key, workerRes.rows[0].id);
+        }
+      } else {
+        // PLANT_A (Surat)
+        for (const [key, rec] of uniqueWorkersMap.entries()) {
+          const siteId = sitesMap.get(rec.blastFurnace.toUpperCase()) || null;
+
+          const workerRes = await client.query(
+            `INSERT INTO workers (gate_pass, wisa, name, designation, department, blast_furnace, site_id, plant_id)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+             ON CONFLICT (blast_furnace, wisa) DO UPDATE SET
+               gate_pass = EXCLUDED.gate_pass,
+               name = EXCLUDED.name,
+               designation = EXCLUDED.designation,
+               department = EXCLUDED.department,
+               site_id = COALESCE(EXCLUDED.site_id, workers.site_id),
+               plant_id = COALESCE(EXCLUDED.plant_id, workers.plant_id),
+               updated_at = CURRENT_TIMESTAMP
+             RETURNING id;`,
+            [rec.gatePass, rec.wisa, rec.name, rec.designation, rec.department, rec.blastFurnace, siteId, plantId]
+          );
+
+          workerIdMap.set(key, workerRes.rows[0].id);
+        }
       }
 
       // 7. Batch Insert Attendance Records
       let bf2Count = 0;
       let bf3Count = 0;
+      let totalManDaysSum = 0;
+      let totalOTHoursSum = 0;
 
       for (const rec of records) {
-        const key = `${rec.blastFurnace.toUpperCase()}:${rec.wisa.toUpperCase()}`;
-        const workerId = workerIdMap.get(key);
+        const workerKey = plantCode === 'PLANT_B'
+          ? `KORBA:${rec.employeeId.toUpperCase()}`
+          : `${rec.blastFurnace.toUpperCase()}:${rec.wisa.toUpperCase()}`;
+        const workerId = workerIdMap.get(workerKey);
 
         if (rec.blastFurnace.toUpperCase() === 'BF-2') bf2Count++;
         if (rec.blastFurnace.toUpperCase() === 'BF-3') bf3Count++;
+
+        totalManDaysSum += (rec.md || rec.manDay || 0);
+        totalOTHoursSum += (rec.otHours || 0);
 
         await client.query(
           `INSERT INTO attendance_records (
             worker_id, import_id, attendance_date, day_name, is_sunday,
             day_in, day_out, night_in, night_out, shift_type,
-            weekday_man_day, sunday_hours, sunday_ratio, man_day
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+            weekday_man_day, night_man_day, sunday_hours, sunday_ratio, man_day,
+            md, ot_hours, attendance_type
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
           ON CONFLICT (worker_id, attendance_date) DO UPDATE SET
             import_id = EXCLUDED.import_id,
             day_name = EXCLUDED.day_name,
@@ -227,9 +273,13 @@ export const importEngineService = {
             night_out = EXCLUDED.night_out,
             shift_type = EXCLUDED.shift_type,
             weekday_man_day = EXCLUDED.weekday_man_day,
+            night_man_day = EXCLUDED.night_man_day,
             sunday_hours = EXCLUDED.sunday_hours,
             sunday_ratio = EXCLUDED.sunday_ratio,
             man_day = EXCLUDED.man_day,
+            md = EXCLUDED.md,
+            ot_hours = EXCLUDED.ot_hours,
+            attendance_type = EXCLUDED.attendance_type,
             updated_at = CURRENT_TIMESTAMP;`,
           [
             workerId,
@@ -242,10 +292,14 @@ export const importEngineService = {
             rec.nightIn,
             rec.nightOut,
             rec.shiftType,
-            rec.weekdayManDay,
-            rec.sundayHours,
-            rec.sundayRatio,
-            rec.manDay,
+            rec.weekdayManDay || 0,
+            rec.nightManDay || 0,
+            rec.sundayHours || 0,
+            rec.sundayRatio || 0,
+            rec.manDay || rec.md || 0,
+            rec.md || 0,
+            rec.otHours || 0,
+            rec.attendanceType || (plantCode === 'PLANT_B' ? 'MD_OT_BASED' : 'PUNCH_BASED'),
           ]
         );
       }
@@ -253,37 +307,43 @@ export const importEngineService = {
       // 8. Generate & Upsert Monthly Worker Summaries
       await client.query(
         `INSERT INTO monthly_worker_summaries (
-          worker_id, month, year, blast_furnace, site_id,
+          worker_id, month, year, blast_furnace, site_id, plant_id,
           working_days, present_days, sunday_working_days,
-          weekday_man_days, sunday_hours, sunday_ratio, total_man_days, night_shifts
+          weekday_man_days, night_man_days, sunday_hours, sunday_ratio, total_man_days, total_ot_hours, night_shifts
         )
         SELECT
           ar.worker_id,
           EXTRACT(MONTH FROM ar.attendance_date)::INT as month,
           EXTRACT(YEAR FROM ar.attendance_date)::INT as year,
-          w.blast_furnace,
+          COALESCE(w.blast_furnace, 'KORBA-MAIN') as blast_furnace,
           w.site_id,
+          w.plant_id,
           COUNT(DISTINCT ar.attendance_date) as working_days,
-          COUNT(DISTINCT CASE WHEN ar.is_sunday = FALSE THEN ar.attendance_date END) as present_days,
-          COUNT(DISTINCT CASE WHEN ar.is_sunday = TRUE THEN ar.attendance_date END) as sunday_working_days,
+          COUNT(DISTINCT CASE WHEN (ar.attendance_type = 'MD_OT_BASED' AND ar.md > 0) OR (ar.attendance_type != 'MD_OT_BASED' AND ar.is_sunday = FALSE) THEN ar.attendance_date END) as present_days,
+          COUNT(DISTINCT CASE WHEN ar.is_sunday = TRUE AND ((ar.attendance_type = 'MD_OT_BASED' AND (ar.md > 0 OR ar.ot_hours > 0)) OR ar.attendance_type != 'MD_OT_BASED') THEN ar.attendance_date END) as sunday_working_days,
           ROUND(SUM(ar.weekday_man_day)::numeric, 2) as weekday_man_days,
+          ROUND(SUM(ar.night_man_day)::numeric, 2) as night_man_days,
           ROUND(SUM(ar.sunday_hours)::numeric, 2) as sunday_hours,
           ROUND(SUM(ar.sunday_ratio)::numeric, 2) as sunday_ratio,
-          ROUND((SUM(ar.weekday_man_day) + SUM(ar.sunday_ratio))::numeric, 2) as total_man_days,
+          ROUND(SUM(COALESCE(ar.md, ar.man_day, 0))::numeric, 2) as total_man_days,
+          ROUND(SUM(COALESCE(ar.ot_hours, 0))::numeric, 2) as total_ot_hours,
           COUNT(CASE WHEN ar.shift_type = 'NIGHT' OR (ar.night_in IS NOT NULL AND ar.night_in != '') THEN 1 END) as night_shifts
         FROM attendance_records ar
         JOIN workers w ON ar.worker_id = w.id
         WHERE ar.import_id = $1
-        GROUP BY ar.worker_id, EXTRACT(MONTH FROM ar.attendance_date), EXTRACT(YEAR FROM ar.attendance_date), w.blast_furnace, w.site_id
+        GROUP BY ar.worker_id, EXTRACT(MONTH FROM ar.attendance_date), EXTRACT(YEAR FROM ar.attendance_date), w.blast_furnace, w.site_id, w.plant_id
         ON CONFLICT (worker_id, month, year, blast_furnace) DO UPDATE SET
           site_id = EXCLUDED.site_id,
+          plant_id = EXCLUDED.plant_id,
           working_days = EXCLUDED.working_days,
           present_days = EXCLUDED.present_days,
           sunday_working_days = EXCLUDED.sunday_working_days,
           weekday_man_days = EXCLUDED.weekday_man_days,
+          night_man_days = EXCLUDED.night_man_days,
           sunday_hours = EXCLUDED.sunday_hours,
           sunday_ratio = EXCLUDED.sunday_ratio,
           total_man_days = EXCLUDED.total_man_days,
+          total_ot_hours = EXCLUDED.total_ot_hours,
           night_shifts = EXCLUDED.night_shifts,
           updated_at = CURRENT_TIMESTAMP;`,
         [importSession.id]
@@ -319,7 +379,7 @@ export const importEngineService = {
 
       return {
         success: true,
-        message: `Attendance data for ${month}/${year} imported successfully into PostgreSQL database.`,
+        message: `Attendance data for ${month}/${year} (${plantCode}) imported successfully into PostgreSQL database.`,
         importId: importedRecord.id,
         uploadId,
         fileName,
@@ -332,6 +392,8 @@ export const importEngineService = {
           uniqueWorkers: workerIdMap.size,
           bf2RecordCount: bf2Count,
           bf3RecordCount: bf3Count,
+          totalManDays: parseFloat(totalManDaysSum.toFixed(2)),
+          totalOTHours: parseFloat(totalOTHoursSum.toFixed(2)),
         },
       };
     } catch (err) {
@@ -358,120 +420,92 @@ export const importEngineService = {
   },
 
   /**
-   * Retrieve import history list with optional filters.
+   * Fetch past import history logs with optional filters.
    */
   async getImportHistory(filters = {}) {
     const { plantCode, year, month, status } = filters;
-    let sql = `
-      SELECT 
-        ai.id,
-        ai.upload_id,
-        ai.file_name,
-        ai.plant_code,
-        p.name as plant_name,
-        p.city as plant_city,
-        p.state as plant_state,
-        ai.month,
-        ai.year,
-        ai.status,
-        ai.bf2_record_count,
-        ai.bf3_record_count,
-        ai.worker_count,
-        ai.total_record_count,
-        ai.error_message,
-        ai.uploaded_at,
-        ai.updated_at
-      FROM attendance_imports ai
-      LEFT JOIN plants p ON p.code = ai.plant_code
-      WHERE 1=1
-    `;
+    const conditions = [];
     const params = [];
 
     if (plantCode && plantCode !== 'ALL') {
       params.push(plantCode);
-      sql += ` AND ai.plant_code = $${params.length}`;
+      conditions.push(`ai.plant_code = $${params.length}`);
     }
+
     if (year && year !== 'ALL') {
       params.push(parseInt(year, 10));
-      sql += ` AND ai.year = $${params.length}`;
+      conditions.push(`ai.year = $${params.length}`);
     }
+
     if (month && month !== 'ALL') {
       params.push(parseInt(month, 10));
-      sql += ` AND ai.month = $${params.length}`;
+      conditions.push(`ai.month = $${params.length}`);
     }
+
     if (status && status !== 'ALL') {
       params.push(status);
-      sql += ` AND ai.status = $${params.length}`;
+      conditions.push(`ai.status = $${params.length}`);
     }
 
-    sql += ' ORDER BY ai.uploaded_at DESC, ai.id DESC';
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
-    const res = await query(sql, params);
-    return res.rows;
-  },
-
-  /**
-   * Retrieve detailed breakdown for a single import session.
-   */
-  async getImportDetails(importIdOrUploadId) {
-    const isNumeric = /^\d+$/.test(String(importIdOrUploadId));
-
-    const impRes = await query(
-      `SELECT 
+    const sql = `
+      SELECT 
         ai.*,
         p.name as plant_name,
         p.city as plant_city,
         p.state as plant_state
       FROM attendance_imports ai
       LEFT JOIN plants p ON p.code = ai.plant_code
-      WHERE ${isNumeric ? 'ai.id = $1' : 'ai.upload_id = $1'}`,
-      [importIdOrUploadId]
+      ${whereClause}
+      ORDER BY ai.id DESC
+    `;
+
+    const res = await query(sql, params);
+    return res.rows;
+  },
+
+  /**
+   * Fetch detailed breakdown for a single import session by ID.
+   */
+  async getImportDetails(importId) {
+    const importRes = await query(
+      `SELECT ai.*, p.name as plant_name, p.city as plant_city, p.state as plant_state
+       FROM attendance_imports ai
+       LEFT JOIN plants p ON p.code = ai.plant_code
+       WHERE ai.id = $1`,
+      [importId]
     );
 
-    if (impRes.rows.length === 0) {
-      throw new Error(`Import record "${importIdOrUploadId}" not found.`);
+    if (importRes.rows.length === 0) {
+      throw new Error(`Import record #${importId} not found.`);
     }
 
-    const imp = impRes.rows[0];
+    const imp = importRes.rows[0];
 
-    // Stats for stored records
-    const statsRes = await query(
-      `SELECT 
-        COUNT(*) as stored_records_count,
-        COUNT(DISTINCT ar.worker_id) as worker_profiles_count,
-        COUNT(DISTINCT w.wisa) as unique_wisa_count,
-        MIN(ar.attendance_date) as min_date,
-        MAX(ar.attendance_date) as max_date
-      FROM attendance_records ar
-      JOIN workers w ON ar.worker_id = w.id
-      WHERE ar.import_id = $1`,
-      [imp.id]
+    // Fetch related version history for the same plant, year, month
+    const relatedRes = await query(
+      `SELECT id, file_name, status, uploaded_at 
+       FROM attendance_imports 
+       WHERE plant_code = $1 AND year = $2 AND month = $3
+       ORDER BY id DESC`,
+      [imp.plant_code, imp.year, imp.month]
     );
 
-    // Unit breakdown
+    // Fetch unit breakdown
     const unitRes = await query(
       `SELECT 
-        w.blast_furnace,
-        COUNT(DISTINCT ar.worker_id) as worker_count,
-        COUNT(ar.id) as record_count
-      FROM attendance_records ar
-      JOIN workers w ON ar.worker_id = w.id
-      WHERE ar.import_id = $1
-      GROUP BY w.blast_furnace
-      ORDER BY w.blast_furnace ASC`,
-      [imp.id]
+        mws.blast_furnace as unit,
+        COUNT(DISTINCT mws.worker_id) as worker_count,
+        SUM(mws.working_days) as record_count,
+        SUM(mws.total_man_days) as total_man_days,
+        SUM(COALESCE(mws.total_ot_hours, 0)) as total_ot_hours
+       FROM monthly_worker_summaries mws
+       JOIN workers w ON mws.worker_id = w.id
+       WHERE mws.year = $1 AND mws.month = $2 AND (w.plant_id = $3 OR mws.plant_id = $3)
+       GROUP BY mws.blast_furnace`,
+      [imp.year, imp.month, imp.plant_id]
     );
-
-    // Fetch related import versions for the same plant, year, month
-    const relatedRes = await query(
-      `SELECT id, upload_id, file_name, status, uploaded_at 
-       FROM attendance_imports 
-       WHERE plant_code = $1 AND year = $2 AND month = $3 AND id != $4
-       ORDER BY uploaded_at DESC`,
-      [imp.plant_code, imp.year, imp.month, imp.id]
-    );
-
-    const stats = statsRes.rows[0] || {};
 
     return {
       importId: imp.id,
@@ -486,19 +520,16 @@ export const importEngineService = {
       status: imp.status,
       isActive: imp.status === 'imported',
       uploadedAt: imp.uploaded_at,
-      updatedAt: imp.updated_at,
       errorMessage: imp.error_message,
-      storedRecordsCount: parseInt(stats.stored_records_count || imp.total_record_count || 0, 10),
-      workerProfilesCount: parseInt(stats.worker_profiles_count || imp.worker_count || 0, 10),
-      uniqueWisaCount: parseInt(stats.unique_wisa_count || 0, 10),
-      dateRange: {
-        minDate: stats.min_date ? new Date(stats.min_date).toISOString().split('T')[0] : null,
-        maxDate: stats.max_date ? new Date(stats.max_date).toISOString().split('T')[0] : null,
-      },
+      storedRecordsCount: parseInt(imp.total_record_count || 0, 10),
+      workerProfilesCount: parseInt(imp.worker_count || 0, 10),
+      uniqueWisaCount: parseInt(imp.worker_count || 0, 10),
       units: unitRes.rows.map((u) => ({
-        unit: u.blast_furnace,
+        unit: u.unit,
         workerCount: parseInt(u.worker_count, 10),
         recordCount: parseInt(u.record_count, 10),
+        totalManDays: parseFloat(u.total_man_days || 0),
+        totalOTHours: parseFloat(u.total_ot_hours || 0),
       })),
       relatedImports: relatedRes.rows.map((r) => ({
         importId: r.id,
@@ -506,8 +537,6 @@ export const importEngineService = {
         status: r.status,
         uploadedAt: r.uploaded_at,
       })),
-      consolidationNote:
-        'Multiple shift entries for the same worker and date are consolidated into one attendance record.',
     };
   },
 };

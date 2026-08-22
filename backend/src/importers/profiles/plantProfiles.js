@@ -1,8 +1,9 @@
 import KamlaV1Parser from '../parsers/kamlaV1Parser.js';
+import KorbaV1Parser from '../parsers/korbaV1Parser.js';
 
 /**
  * Plant Profiles Registry.
- * Holds conceptual configuration for current and future plants.
+ * Holds configuration for supported plants across Kamla Enterprises.
  */
 export const PLANT_PROFILES = {
   PLANT_A: {
@@ -10,21 +11,24 @@ export const PLANT_PROFILES = {
     name: 'Kamla Enterprises Plant',
     city: 'Surat',
     state: 'Gujarat',
-    description: 'Current Plant Location (BF-2 and BF-3 Units in Surat, Gujarat)',
+    description: 'Surat Plant Location (BF-2 and BF-3 Units in Surat, Gujarat)',
     formatCode: 'KAMLA_V1',
     supportedUnits: ['BF-2', 'BF-3'],
     parserClass: KamlaV1Parser,
     isImplemented: true,
+    attendanceType: 'PUNCH_BASED',
   },
   PLANT_B: {
     code: 'PLANT_B',
-    name: 'Future Plant Location',
-    city: 'Other City',
-    description: 'Placeholder for Future Plant Location',
-    formatCode: 'PLANT_B_V1',
-    supportedUnits: ['UNIT-1'],
-    parserClass: null,
-    isImplemented: false,
+    name: 'Kamla Enterprises Plant',
+    city: 'Korba',
+    state: 'Chhattisgarh',
+    description: 'Korba Plant Location (Korba Site / Main Workforce)',
+    formatCode: 'KORBA_V1',
+    supportedUnits: ['KORBA-MAIN'],
+    parserClass: KorbaV1Parser,
+    isImplemented: true,
+    attendanceType: 'MD_OT_BASED',
   },
 };
 

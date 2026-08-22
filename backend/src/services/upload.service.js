@@ -18,7 +18,7 @@ export const uploadService = {
    */
   processAttendanceUpload(file, plantCode = 'PLANT_A') {
     const ext = path.extname(file.originalname).toLowerCase();
-    const uploadId = file.filename.replace(ext, '');
+    const uploadId = (file.filename || file.originalname || 'file').replace(ext, '');
 
     // Resolve plant profile
     const profile = ImporterRegistry.getProfile(plantCode);

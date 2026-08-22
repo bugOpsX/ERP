@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const rawUrl = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'https://attendance-api.bugopsx.in';
+const rawUrl = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const getApiBaseUrl = (url) => {
   let cleaned = url.trim().replace(/\/+$/, '');

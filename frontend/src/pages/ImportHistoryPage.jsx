@@ -142,6 +142,7 @@ const ImportHistoryPage = () => {
           >
             <option value="ALL">All Plants</option>
             <option value="PLANT_A">Surat, Gujarat (PLANT_A)</option>
+            <option value="PLANT_B">Korba, Chhattisgarh (PLANT_B)</option>
           </select>
         </div>
 
@@ -306,12 +307,20 @@ const ImportHistoryPage = () => {
                       {/* Units */}
                       <td className="py-4 px-4">
                         <div className="flex items-center gap-1 text-[10px] font-bold">
-                          <span className="px-1.5 py-0.5 bg-[#051424] text-[#ffb690] rounded border border-[#45464d]/20">
-                            BF-2
-                          </span>
-                          <span className="px-1.5 py-0.5 bg-[#051424] text-[#ffb690] rounded border border-[#45464d]/20">
-                            BF-3
-                          </span>
+                          {imp.plant_code === 'PLANT_B' ? (
+                            <span className="px-1.5 py-0.5 bg-[#051424] text-[#ffb690] rounded border border-[#45464d]/20">
+                              KORBA-MAIN
+                            </span>
+                          ) : (
+                            <>
+                              <span className="px-1.5 py-0.5 bg-[#051424] text-[#ffb690] rounded border border-[#45464d]/20">
+                                BF-2
+                              </span>
+                              <span className="px-1.5 py-0.5 bg-[#051424] text-[#ffb690] rounded border border-[#45464d]/20">
+                                BF-3
+                              </span>
+                            </>
+                          )}
                         </div>
                       </td>
 

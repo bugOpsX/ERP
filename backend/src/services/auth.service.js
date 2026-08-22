@@ -31,10 +31,8 @@ export const authService = {
     }
 
     const configuredUsername = process.env.ADMIN_USERNAME || 'admin';
-    const configuredHash =
-      process.env.ADMIN_PASSWORD_HASH ||
-      '$2b$10$k5hLCAgriibJN3jnmCw6OOAC82LfKiM23OPQ8Pac4KC7WAElt7teK'; // Default hash for 'admin123'
-    const sessionSecret = process.env.SESSION_SECRET || 'kamla_enterprises_secret_key_2026_super_secure';
+    const configuredHash = process.env.ADMIN_PASSWORD_HASH || '';
+    const sessionSecret = process.env.SESSION_SECRET || 'dev_session_secret_key_change_in_production';
     const sessionMaxAge = parseInt(process.env.SESSION_MAX_AGE || '86400', 10);
 
     const usernameMatches = username.trim().toLowerCase() === configuredUsername.toLowerCase();
@@ -74,7 +72,7 @@ export const authService = {
    */
   verifyToken: (token) => {
     if (!token) return null;
-    const sessionSecret = process.env.SESSION_SECRET || 'kamla_enterprises_secret_key_2026_super_secure';
+    const sessionSecret = process.env.SESSION_SECRET || 'dev_session_secret_key_change_in_production';
     try {
       const decoded = jwt.verify(token, sessionSecret);
       return {

@@ -17,6 +17,7 @@ export const MonthlySummaryModel = {
       presentDays,
       sundayWorkingDays,
       weekdayManDays,
+      nightManDays,
       sundayHours,
       sundayRatio,
       totalManDays,
@@ -27,14 +28,15 @@ export const MonthlySummaryModel = {
       INSERT INTO monthly_worker_summaries (
         worker_id, month, year, blast_furnace, site_id,
         working_days, present_days, sunday_working_days,
-        weekday_man_days, sunday_hours, sunday_ratio, total_man_days, night_shifts
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        weekday_man_days, night_man_days, sunday_hours, sunday_ratio, total_man_days, night_shifts
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
       ON CONFLICT (worker_id, month, year, blast_furnace) DO UPDATE SET
         site_id = COALESCE(EXCLUDED.site_id, monthly_worker_summaries.site_id),
         working_days = EXCLUDED.working_days,
         present_days = EXCLUDED.present_days,
         sunday_working_days = EXCLUDED.sunday_working_days,
         weekday_man_days = EXCLUDED.weekday_man_days,
+        night_man_days = EXCLUDED.night_man_days,
         sunday_hours = EXCLUDED.sunday_hours,
         sunday_ratio = EXCLUDED.sunday_ratio,
         total_man_days = EXCLUDED.total_man_days,
@@ -53,6 +55,7 @@ export const MonthlySummaryModel = {
       presentDays || 0,
       sundayWorkingDays || 0,
       weekdayManDays || 0,
+      nightManDays || 0,
       sundayHours || 0,
       sundayRatio || 0,
       totalManDays || 0,

@@ -10,8 +10,11 @@ export class ImporterRegistry {
       code: profile.code,
       name: profile.name,
       city: profile.city,
+      state: profile.state,
       description: profile.description,
       supportedUnits: profile.supportedUnits,
+      formatCode: profile.formatCode,
+      attendanceType: profile.attendanceType,
       isImplemented: profile.isImplemented,
     }));
   }

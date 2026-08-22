@@ -17,25 +17,36 @@ const AttendanceCard = ({ worker, variant = 'preview', id }) => {
 
   const records = Array.isArray(worker.Attendance) ? worker.Attendance : [];
 
+  // Plant detection (Korba vs Surat)
+  const plantCode = worker.PlantCode || worker.plantCode;
+  const isKorba =
+    plantCode === 'PLANT_B' ||
+    worker.AttendanceType === 'MD_OT_BASED' ||
+    (records.length > 0 && records[0].AttendanceType === 'MD_OT_BASED');
+
   // API fields as single source of truth
-  const gatePass = worker.GatePass || '—';
-  const wisa = worker.WISA || '—';
-  const blastFurnace = worker.BlastFurnace || '—';
-  const department = worker.Department || '—';
-  const designation = worker.Designation || '—';
-  const name = worker.Name || '—';
+  const gatePass = worker.GatePass || worker.gatePass || '—';
+  const wisa = worker.WISA || worker.wisa || '—';
+  const blastFurnace = worker.BlastFurnace || worker.blastFurnace || '—';
+  const department = worker.Department || worker.department || '—';
+  const designation = worker.Designation || worker.designation || '—';
+  const name = worker.Name || worker.name || '—';
 
   // Summary Metrics directly from API
-  const workingDays = worker.WorkingDays ?? records.length;
-  const presentDays = worker.PresentDays ?? 0;
-  const sundayWorked = worker.SundayWorkingDays ?? 0;
-  const nightShifts = worker.NightShifts ?? 0;
+  const workingDays = worker.WorkingDays ?? worker.workingDays ?? records.length;
+  const presentDays = worker.PresentDays ?? worker.presentDays ?? 0;
+  const sundayWorked = worker.SundayWorkingDays ?? worker.sundayWorkingDays ?? 0;
+  const nightShifts = worker.NightShifts ?? worker.nightShifts ?? 0;
+
+  const rawOT = worker.TotalOTHours ?? worker.totalOTHours ?? records.reduce((sum, r) => sum + parseFloat(r.OTHours ?? r.ot_hours ?? 0), 0);
+  const totalOTHours = (typeof rawOT === 'number' ? rawOT : parseFloat(rawOT || 0)).toFixed(2);
 
   // Payroll Summary directly from API
-  const weekdayManDays = worker.WeekdayManDays != null ? (typeof worker.WeekdayManDays === 'number' ? worker.WeekdayManDays.toFixed(2) : worker.WeekdayManDays) : '0.00';
-  const sundayHours = worker.SundayHours != null ? (typeof worker.SundayHours === 'number' ? worker.SundayHours.toFixed(2) : worker.SundayHours) : '0.00';
-  const sundayRatio = worker.SundayRatio != null ? (typeof worker.SundayRatio === 'number' ? worker.SundayRatio.toFixed(2) : worker.SundayRatio) : '0.00';
-  const totalManDays = worker.TotalManDays != null ? (typeof worker.TotalManDays === 'number' ? worker.TotalManDays.toFixed(2) : worker.TotalManDays) : '0.00';
+  const weekdayManDays = worker.WeekdayManDays != null ? (typeof worker.WeekdayManDays === 'number' ? worker.WeekdayManDays.toFixed(2) : parseFloat(worker.WeekdayManDays || 0).toFixed(2)) : (worker.weekdayManDays != null ? (typeof worker.weekdayManDays === 'number' ? worker.weekdayManDays.toFixed(2) : parseFloat(worker.weekdayManDays || 0).toFixed(2)) : '0.00');
+  const nightManDays = worker.NightManDays != null ? (typeof worker.NightManDays === 'number' ? worker.NightManDays.toFixed(2) : parseFloat(worker.NightManDays || 0).toFixed(2)) : (worker.nightManDays != null ? (typeof worker.nightManDays === 'number' ? worker.nightManDays.toFixed(2) : parseFloat(worker.nightManDays || 0).toFixed(2)) : '0.00');
+  const sundayHours = worker.SundayHours != null ? (typeof worker.SundayHours === 'number' ? worker.SundayHours.toFixed(2) : parseFloat(worker.SundayHours || 0).toFixed(2)) : (worker.sundayHours != null ? (typeof worker.sundayHours === 'number' ? worker.sundayHours.toFixed(2) : parseFloat(worker.sundayHours || 0).toFixed(2)) : '0.00');
+  const sundayRatio = worker.SundayRatio != null ? (typeof worker.SundayRatio === 'number' ? worker.SundayRatio.toFixed(2) : parseFloat(worker.SundayRatio || 0).toFixed(2)) : (worker.sundayRatio != null ? (typeof worker.sundayRatio === 'number' ? worker.sundayRatio.toFixed(2) : parseFloat(worker.sundayRatio || 0).toFixed(2)) : '0.00');
+  const totalManDays = worker.TotalManDays != null ? (typeof worker.TotalManDays === 'number' ? worker.TotalManDays.toFixed(2) : parseFloat(worker.TotalManDays || 0).toFixed(2)) : (worker.totalManDays != null ? (typeof worker.totalManDays === 'number' ? worker.totalManDays.toFixed(2) : parseFloat(worker.totalManDays || 0).toFixed(2)) : '0.00');
 
   const timestamp = new Date().toLocaleDateString('en-IN', {
     day: '2-digit',
@@ -50,12 +61,12 @@ const AttendanceCard = ({ worker, variant = 'preview', id }) => {
       id={id}
       className={`rounded-lg transition-all ${
         isPrintable
-          ? 'bg-white text-[#0f172a] p-6 font-sans border border-[#cbd5e1] max-w-[650px] mx-auto box-border shadow-sm'
+          ? 'bg-white text-[#0f172a] p-6 font-sans border border-[#cbd5e1] max-w-[680px] mx-auto box-border shadow-sm'
           : 'bg-[#122131] text-[#d4e4fa] p-6 border border-[#45464d]/30 inner-glow font-sans'
       }`}
       style={{
         boxSizing: 'border-box',
-        width: isPrintable ? '650px' : '100%',
+        width: isPrintable ? '680px' : '100%',
       }}
     >
       {/* ── Brand & Card Header ── */}
@@ -66,21 +77,30 @@ const AttendanceCard = ({ worker, variant = 'preview', id }) => {
             : 'bg-[#0d1c2d] border border-[#45464d]/40'
         }`}
       >
-        <div>
-          <h2
-            className={`font-bold uppercase tracking-wider ${
-              isPrintable ? 'text-lg text-white' : 'text-lg text-[#d4e4fa]'
+        <div className="flex items-center gap-3.5">
+          <img
+            src="/logo.png"
+            alt="Kamla Enterprises Logo"
+            className={`w-16 h-16 object-contain rounded-xl p-1 border ${
+              isPrintable ? 'bg-white border-[#cbd5e1]' : 'bg-[#051424] border-white/20'
             }`}
-          >
-            Kamla Enterprises
-          </h2>
-          <p
-            className={`text-[10px] uppercase font-semibold tracking-widest ${
-              isPrintable ? 'text-[#94a3b8]' : 'text-[#909097]'
-            }`}
-          >
-            Labor Management System
-          </p>
+          />
+          <div>
+            <h2
+              className={`font-bold uppercase tracking-wider ${
+                isPrintable ? 'text-lg text-white' : 'text-lg text-white'
+              }`}
+            >
+              Kamla Enterprises
+            </h2>
+            <p
+              className={`text-[10px] uppercase font-semibold tracking-widest ${
+                isPrintable ? 'text-[#94a3b8]' : 'text-[#909097]'
+              }`}
+            >
+              {isKorba ? 'Korba Attendance System' : 'Labor Management System'}
+            </p>
+          </div>
         </div>
 
         <div className="text-right">
@@ -142,7 +162,7 @@ const AttendanceCard = ({ worker, variant = 'preview', id }) => {
           )}
         </div>
 
-        {/* Expandable Details Section (always visible in printable mode, toggleable in preview mode) */}
+        {/* Expandable Details Section */}
         {(showFullDetails || isPrintable) && (
           <div className={`mt-3 pt-3 border-t grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs ${
             isPrintable ? 'border-[#e2e8f0]' : 'border-[#45464d]/30'
@@ -157,7 +177,7 @@ const AttendanceCard = ({ worker, variant = 'preview', id }) => {
             </div>
             <div>
               <span className="block text-[9px] uppercase font-bold text-[#64748b] tracking-wider mb-0.5">
-                WISA ID
+                WISA ID / EMP ID
               </span>
               <span className={`font-mono font-bold ${isPrintable ? 'text-[#0f172a]' : 'text-[#ffb690]'}`}>
                 {wisa}
@@ -181,7 +201,7 @@ const AttendanceCard = ({ worker, variant = 'preview', id }) => {
             </div>
             <div>
               <span className="block text-[9px] uppercase font-bold text-[#64748b] tracking-wider mb-0.5">
-                Blast Furnace
+                Unit / Plant
               </span>
               <span className={`font-bold ${isPrintable ? 'text-[#0f172a]' : 'text-[#ffb690]'}`}>
                 🏭 {blastFurnace}
@@ -212,7 +232,7 @@ const AttendanceCard = ({ worker, variant = 'preview', id }) => {
           }`}
         >
           <span className="block text-[9px] uppercase font-bold text-[#16a34a] tracking-wider">
-            Present Days
+            {isKorba ? 'Attendance Days' : 'Present Days'}
           </span>
           <span className={`text-base font-bold font-mono ${isPrintable ? 'text-[#16a34a]' : 'text-emerald-400'}`}>
             {presentDays}
@@ -225,10 +245,10 @@ const AttendanceCard = ({ worker, variant = 'preview', id }) => {
           }`}
         >
           <span className="block text-[9px] uppercase font-bold text-[#ea580c] tracking-wider">
-            Sunday Worked
+            {isKorba ? 'Total Man Days' : 'Sunday Worked'}
           </span>
           <span className={`text-base font-bold font-mono ${isPrintable ? 'text-[#ea580c]' : 'text-[#ffb690]'}`}>
-            {sundayWorked}
+            {isKorba ? totalManDays : sundayWorked}
           </span>
         </div>
 
@@ -238,10 +258,10 @@ const AttendanceCard = ({ worker, variant = 'preview', id }) => {
           }`}
         >
           <span className="block text-[9px] uppercase font-bold text-[#d97706] tracking-wider">
-            Night Shifts
+            {isKorba ? 'Total OT Hours' : 'Night Shifts'}
           </span>
           <span className={`text-base font-bold font-mono ${isPrintable ? 'text-[#d97706]' : 'text-amber-400'}`}>
-            {nightShifts}
+            {isKorba ? `${totalOTHours} hrs` : nightShifts}
           </span>
         </div>
       </div>
@@ -253,54 +273,118 @@ const AttendanceCard = ({ worker, variant = 'preview', id }) => {
             Payroll Summary
           </span>
         </div>
-        <div className="grid grid-cols-4 gap-2 text-center">
-          {/* Weekday Man Days */}
-          <div className={`p-2 rounded border ${isPrintable ? 'bg-[#f8fafc] border-[#e2e8f0]' : 'bg-[#0d1c2d] border-[#45464d]/20'}`}>
-            <span className="block text-[9px] uppercase font-bold text-[#64748b] tracking-wider">
-              Weekday Man Days
-            </span>
-            <span className={`text-base font-bold font-mono ${isPrintable ? 'text-[#0f172a]' : 'text-[#d4e4fa]'}`}>
-              {weekdayManDays}
-            </span>
-            <span className="block text-[8px] text-[#94a3b8] tracking-tight">12 hr basis</span>
-          </div>
+        {isKorba ? (
+          <div className="grid grid-cols-4 gap-1.5 text-center">
+            {/* Man Days */}
+            <div className={`p-1.5 rounded border ${isPrintable ? 'bg-[#f8fafc] border-[#e2e8f0]' : 'bg-[#0d1c2d] border-[#45464d]/20'}`}>
+              <span className="block text-[8.5px] uppercase font-bold text-[#64748b] tracking-wider truncate">
+                Man Days (MD)
+              </span>
+              <span className={`text-sm font-bold font-mono ${isPrintable ? 'text-[#0f172a]' : 'text-[#d4e4fa]'}`}>
+                {totalManDays}
+              </span>
+              <span className="block text-[7.5px] text-[#94a3b8] tracking-tight">Daily MD Sum</span>
+            </div>
 
-          {/* Sunday Hours */}
-          <div className={`p-2 rounded border ${isPrintable ? 'bg-[#f8fafc] border-[#e2e8f0]' : 'bg-[#0d1c2d] border-[#45464d]/20'}`}>
-            <span className="block text-[9px] uppercase font-bold text-[#64748b] tracking-wider">
-              Sunday Hours
-            </span>
-            <span className={`text-base font-bold font-mono ${isPrintable ? 'text-[#0f172a]' : 'text-[#d4e4fa]'}`}>
-              {sundayHours} hrs
-            </span>
-          </div>
+            {/* OT Hours */}
+            <div className={`p-1.5 rounded border ${isPrintable ? 'bg-[#f8fafc] border-[#e2e8f0]' : 'bg-[#0d1c2d] border-[#45464d]/20'}`}>
+              <span className="block text-[8.5px] uppercase font-bold text-[#d97706] tracking-wider truncate">
+                OT Hours
+              </span>
+              <span className={`text-sm font-bold font-mono ${isPrintable ? 'text-[#d97706]' : 'text-amber-400'}`}>
+                {totalOTHours} hrs
+              </span>
+              <span className="block text-[7.5px] text-[#94a3b8] tracking-tight">Daily OT Sum</span>
+            </div>
 
-          {/* Sunday Man Days */}
-          <div className={`p-2 rounded border ${isPrintable ? 'bg-[#f8fafc] border-[#e2e8f0]' : 'bg-[#0d1c2d] border-[#45464d]/20'}`}>
-            <span className="block text-[9px] uppercase font-bold text-[#64748b] tracking-wider">
-              Sunday Man Days
-            </span>
-            <span className={`text-base font-bold font-mono ${isPrintable ? 'text-[#0f172a]' : 'text-[#d4e4fa]'}`}>
-              {sundayRatio}
-            </span>
-            <span className="block text-[8px] text-[#94a3b8] tracking-tight">5 hr basis</span>
-          </div>
+            {/* Attendance Days */}
+            <div className={`p-1.5 rounded border ${isPrintable ? 'bg-[#f8fafc] border-[#e2e8f0]' : 'bg-[#0d1c2d] border-[#45464d]/20'}`}>
+              <span className="block text-[8.5px] uppercase font-bold text-[#16a34a] tracking-wider truncate">
+                Attendance Days
+              </span>
+              <span className={`text-sm font-bold font-mono ${isPrintable ? 'text-[#16a34a]' : 'text-emerald-400'}`}>
+                {presentDays}
+              </span>
+              <span className="block text-[7.5px] text-[#94a3b8] tracking-tight">Days Worked</span>
+            </div>
 
-          {/* Total Man Days (Visually Emphasized) */}
-          <div className={`p-2 rounded border-2 ${
-            isPrintable
-              ? 'bg-[#fff7ed] border-[#ea580c] shadow-xs'
-              : 'bg-[#1c2b3c] border-[#ffb690] shadow-[0_0_12px_rgba(255,182,144,0.15)]'
-          }`}>
-            <span className={`block text-[9px] uppercase font-extrabold tracking-wider ${isPrintable ? 'text-[#c2410c]' : 'text-[#ffb690]'}`}>
-              Total Man Days
-            </span>
-            <span className={`text-base font-extrabold font-mono ${isPrintable ? 'text-[#c2410c]' : 'text-[#ffb690]'}`}>
-              {totalManDays}
-            </span>
-            <span className="block text-[8px] font-bold text-[#ea580c] tracking-tight">Final Payroll</span>
+            {/* Total Man Days (Final Payroll) */}
+            <div className={`p-1.5 rounded border-2 ${
+              isPrintable
+                ? 'bg-[#fff7ed] border-[#ea580c] shadow-xs'
+                : 'bg-[#1c2b3c] border-[#ffb690] shadow-[0_0_12px_rgba(255,182,144,0.15)]'
+            }`}>
+              <span className={`block text-[8.5px] uppercase font-extrabold tracking-wider truncate ${isPrintable ? 'text-[#c2410c]' : 'text-[#ffb690]'}`}>
+                Total Man Days
+              </span>
+              <span className={`text-sm font-extrabold font-mono ${isPrintable ? 'text-[#c2410c]' : 'text-[#ffb690]'}`}>
+                {totalManDays}
+              </span>
+              <span className="block text-[7.5px] font-bold text-[#ea580c] tracking-tight">Final Payroll</span>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="grid grid-cols-5 gap-1.5 text-center">
+            {/* Weekday Man Days */}
+            <div className={`p-1.5 rounded border ${isPrintable ? 'bg-[#f8fafc] border-[#e2e8f0]' : 'bg-[#0d1c2d] border-[#45464d]/20'}`}>
+              <span className="block text-[8.5px] uppercase font-bold text-[#64748b] tracking-wider truncate">
+                Weekday Man Days
+              </span>
+              <span className={`text-sm font-bold font-mono ${isPrintable ? 'text-[#0f172a]' : 'text-[#d4e4fa]'}`}>
+                {weekdayManDays}
+              </span>
+              <span className="block text-[7.5px] text-[#94a3b8] tracking-tight">12 hr basis</span>
+            </div>
+
+            {/* Night Man Days */}
+            <div className={`p-1.5 rounded border ${isPrintable ? 'bg-[#f8fafc] border-[#e2e8f0]' : 'bg-[#0d1c2d] border-[#45464d]/20'}`}>
+              <span className="block text-[8.5px] uppercase font-bold text-[#d97706] tracking-wider truncate">
+                Night Man Days
+              </span>
+              <span className={`text-sm font-bold font-mono ${isPrintable ? 'text-[#d97706]' : 'text-amber-400'}`}>
+                {nightManDays}
+              </span>
+              <span className="block text-[7.5px] text-[#94a3b8] tracking-tight">6 hr basis</span>
+            </div>
+
+            {/* Sunday Hours */}
+            <div className={`p-1.5 rounded border ${isPrintable ? 'bg-[#f8fafc] border-[#e2e8f0]' : 'bg-[#0d1c2d] border-[#45464d]/20'}`}>
+              <span className="block text-[8.5px] uppercase font-bold text-[#64748b] tracking-wider truncate">
+                Sunday Hours
+              </span>
+              <span className={`text-sm font-bold font-mono ${isPrintable ? 'text-[#0f172a]' : 'text-[#d4e4fa]'}`}>
+                {sundayHours} hrs
+              </span>
+              <span className="block text-[7.5px] text-[#94a3b8] tracking-tight">Total hrs</span>
+            </div>
+
+            {/* Sunday Man Days */}
+            <div className={`p-1.5 rounded border ${isPrintable ? 'bg-[#f8fafc] border-[#e2e8f0]' : 'bg-[#0d1c2d] border-[#45464d]/20'}`}>
+              <span className="block text-[8.5px] uppercase font-bold text-[#64748b] tracking-wider truncate">
+                Sunday Man Days
+              </span>
+              <span className={`text-sm font-bold font-mono ${isPrintable ? 'text-[#0f172a]' : 'text-[#d4e4fa]'}`}>
+                {sundayRatio}
+              </span>
+              <span className="block text-[7.5px] text-[#94a3b8] tracking-tight">5 hr basis</span>
+            </div>
+
+            {/* Total Man Days (Visually Emphasized) */}
+            <div className={`p-1.5 rounded border-2 ${
+              isPrintable
+                ? 'bg-[#fff7ed] border-[#ea580c] shadow-xs'
+                : 'bg-[#1c2b3c] border-[#ffb690] shadow-[0_0_12px_rgba(255,182,144,0.15)]'
+            }`}>
+              <span className={`block text-[8.5px] uppercase font-extrabold tracking-wider truncate ${isPrintable ? 'text-[#c2410c]' : 'text-[#ffb690]'}`}>
+                Total Man Days
+              </span>
+              <span className={`text-sm font-extrabold font-mono ${isPrintable ? 'text-[#c2410c]' : 'text-[#ffb690]'}`}>
+                {totalManDays}
+              </span>
+              <span className="block text-[7.5px] font-bold text-[#ea580c] tracking-tight">Final Payroll</span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── Compact Attendance Table Log ── */}
@@ -308,20 +392,32 @@ const AttendanceCard = ({ worker, variant = 'preview', id }) => {
         <table className="w-full text-left border-collapse text-[11px]">
           <thead>
             <tr className={isPrintable ? 'bg-[#1e293b] text-white' : 'bg-[#1c2b3c] text-[#d4e4fa]'}>
-              <th className="py-2 px-2.5 font-semibold uppercase tracking-wider text-[10px]">Date</th>
-              <th className="py-2 px-2 font-semibold uppercase tracking-wider text-[10px]">Day</th>
-              <th className="py-2 px-2 font-semibold uppercase tracking-wider text-[10px]">Day In</th>
-              <th className="py-2 px-2 font-semibold uppercase tracking-wider text-[10px]">Day Out</th>
-              <th className="py-2 px-2 font-semibold uppercase tracking-wider text-[10px]">Night In</th>
-              <th className="py-2 px-2 font-semibold uppercase tracking-wider text-[10px]">Night Out</th>
-              <th className="py-2 px-2 font-semibold uppercase tracking-wider text-[10px]">Man Day</th>
+              {isKorba ? (
+                <>
+                  <th className="py-2 px-3 font-semibold uppercase tracking-wider text-[9.5px]">Date</th>
+                  <th className="py-2 px-2 text-center font-semibold uppercase tracking-wider text-[9.5px]">Day</th>
+                  <th className="py-2 px-3 text-center font-semibold uppercase tracking-wider text-[9.5px]">MD (Man Day)</th>
+                  <th className="py-2 px-3 text-center font-semibold uppercase tracking-wider text-[9.5px]">OT Hours</th>
+                </>
+              ) : (
+                <>
+                  <th className="py-2 px-2 font-semibold uppercase tracking-wider text-[9.5px]">Date</th>
+                  <th className="py-2 px-1.5 font-semibold uppercase tracking-wider text-[9.5px]">Day</th>
+                  <th className="py-2 px-1.5 font-semibold uppercase tracking-wider text-[9.5px]">Day In</th>
+                  <th className="py-2 px-1.5 font-semibold uppercase tracking-wider text-[9.5px]">Day Out</th>
+                  <th className="py-2 px-1.5 font-semibold uppercase tracking-wider text-[9.5px]">Night In</th>
+                  <th className="py-2 px-1.5 font-semibold uppercase tracking-wider text-[9.5px]">Night Out</th>
+                  <th className="py-2 px-1.5 font-semibold uppercase tracking-wider text-[9.5px]">Day Man Day</th>
+                  <th className="py-2 px-1.5 font-semibold uppercase tracking-wider text-[9.5px]">Night Man Day</th>
+                </>
+              )}
             </tr>
           </thead>
           <tbody>
             {records.length === 0 ? (
               <tr>
                 <td
-                  colSpan={7}
+                  colSpan={isKorba ? 4 : 8}
                   className={`py-4 text-center text-xs ${
                     isPrintable ? 'text-[#94a3b8]' : 'text-[#909097]'
                   }`}
@@ -345,17 +441,54 @@ const AttendanceCard = ({ worker, variant = 'preview', id }) => {
                 const dayDisplayName = (r.DayName || '').toUpperCase();
                 const formattedDay = dayDisplayName.startsWith('SUN') ? 'SUN' : (dayDisplayName.slice(0, 3) || '—');
 
-                const manDayVal = r.ManDay != null ? (typeof r.ManDay === 'number' ? r.ManDay.toFixed(2) : r.ManDay) : '—';
+                if (isKorba) {
+                  const mdVal = (r.MD != null ? parseFloat(r.MD) : (r.ManDay != null ? parseFloat(r.ManDay) : 0)).toFixed(2);
+                  const otVal = (r.OTHours != null ? parseFloat(r.OTHours) : 0).toFixed(2);
+
+                  return (
+                    <tr key={idx} className={`${rowBg} ${borderLeftClass} border-t border-[#cbd5e1]/20 font-mono`}>
+                      <td className={`py-1.5 px-3 font-semibold ${isPrintable ? 'text-[#0f172a]' : 'text-[#d4e4fa]'}`}>
+                        {r.Date || '—'}
+                      </td>
+                      <td className="py-1.5 px-2 text-center font-sans font-semibold">
+                        {isSun ? (
+                          <span className={`inline-block px-1.5 py-0.5 rounded text-[8.5px] font-bold ${
+                            isPrintable ? 'bg-[#ffb690]/30 text-[#c2410c]' : 'bg-[#ffb690]/20 text-[#ffb690]'
+                          }`}>
+                            SUN
+                          </span>
+                        ) : (
+                          <span className={isPrintable ? 'text-[#475569]' : 'text-[#909097]'}>
+                            {formattedDay}
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-1.5 px-3 text-center">
+                        <span className={`font-bold ${parseFloat(mdVal) > 0 ? (isPrintable ? 'text-[#0f172a]' : 'text-[#d4e4fa]') : (isPrintable ? 'text-[#94a3b8]' : 'text-[#45464d]')}`}>
+                          {mdVal}
+                        </span>
+                      </td>
+                      <td className="py-1.5 px-3 text-center">
+                        <span className={`font-bold ${parseFloat(otVal) > 0 ? (isPrintable ? 'text-[#d97706]' : 'text-amber-400') : (isPrintable ? 'text-[#94a3b8]' : 'text-[#45464d]')}`}>
+                          {otVal}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                }
+
+                const dayManDayVal = r.DayManDay != null ? (typeof r.DayManDay === 'number' ? r.DayManDay.toFixed(2) : parseFloat(r.DayManDay || 0).toFixed(2)) : (r.WeekdayManDay != null ? (typeof r.WeekdayManDay === 'number' ? r.WeekdayManDay.toFixed(2) : parseFloat(r.WeekdayManDay || 0).toFixed(2)) : (r.ManDay != null ? (typeof r.ManDay === 'number' ? r.ManDay.toFixed(2) : parseFloat(r.ManDay || 0).toFixed(2)) : '0.00'));
+                const nightManDayVal = r.NightManDay != null ? (typeof r.NightManDay === 'number' ? r.NightManDay.toFixed(2) : parseFloat(r.NightManDay || 0).toFixed(2)) : (r.nightManDay != null ? (typeof r.nightManDay === 'number' ? r.nightManDay.toFixed(2) : parseFloat(r.nightManDay || 0).toFixed(2)) : '0.00');
                 const sundayHrsVal = r.SundayHours != null ? (typeof r.SundayHours === 'number' ? r.SundayHours.toFixed(2) : r.SundayHours) : null;
 
                 return (
                   <tr key={idx} className={`${rowBg} ${borderLeftClass} border-t border-[#cbd5e1]/20 font-mono`}>
-                    <td className={`py-1.5 px-2.5 font-semibold ${isPrintable ? 'text-[#0f172a]' : 'text-[#d4e4fa]'}`}>
+                    <td className={`py-1.5 px-2 font-semibold ${isPrintable ? 'text-[#0f172a]' : 'text-[#d4e4fa]'}`}>
                       {r.Date || '—'}
                     </td>
-                    <td className="py-1.5 px-2 font-sans font-semibold">
+                    <td className="py-1.5 px-1.5 font-sans font-semibold">
                       {isSun ? (
-                        <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                        <span className={`inline-block px-1 py-0.5 rounded text-[8.5px] font-bold ${
                           isPrintable ? 'bg-[#ffb690]/30 text-[#c2410c]' : 'bg-[#ffb690]/20 text-[#ffb690]'
                         }`}>
                           SUN
@@ -366,27 +499,32 @@ const AttendanceCard = ({ worker, variant = 'preview', id }) => {
                         </span>
                       )}
                     </td>
-                    <td className={`py-1.5 px-2 ${r.DayIn ? (isPrintable ? 'text-[#16a34a] font-semibold' : 'text-emerald-400 font-semibold') : (isPrintable ? 'text-[#94a3b8]' : 'text-[#45464d]')}`}>
+                    <td className={`py-1.5 px-1.5 ${r.DayIn ? (isPrintable ? 'text-[#16a34a] font-semibold' : 'text-emerald-400 font-semibold') : (isPrintable ? 'text-[#94a3b8]' : 'text-[#45464d]')}`}>
                       {r.DayIn || '—'}
                     </td>
-                    <td className={`py-1.5 px-2 ${r.DayOut ? (isPrintable ? 'text-[#334155]' : 'text-[#c6c6cd]') : (isPrintable ? 'text-[#94a3b8]' : 'text-[#45464d]')}`}>
+                    <td className={`py-1.5 px-1.5 ${r.DayOut ? (isPrintable ? 'text-[#334155]' : 'text-[#c6c6cd]') : (isPrintable ? 'text-[#94a3b8]' : 'text-[#45464d]')}`}>
                       {r.DayOut || '—'}
                     </td>
-                    <td className={`py-1.5 px-2 ${r.NightIn ? (isPrintable ? 'text-[#d97706] font-semibold' : 'text-amber-400 font-semibold') : (isPrintable ? 'text-[#94a3b8]' : 'text-[#45464d]')}`}>
+                    <td className={`py-1.5 px-1.5 ${r.NightIn ? (isPrintable ? 'text-[#d97706] font-semibold' : 'text-amber-400 font-semibold') : (isPrintable ? 'text-[#94a3b8]' : 'text-[#45464d]')}`}>
                       {r.NightIn || '—'}
                     </td>
-                    <td className={`py-1.5 px-2 ${r.NightOut ? (isPrintable ? 'text-[#334155]' : 'text-[#c6c6cd]') : (isPrintable ? 'text-[#94a3b8]' : 'text-[#45464d]')}`}>
+                    <td className={`py-1.5 px-1.5 ${r.NightOut ? (isPrintable ? 'text-[#334155]' : 'text-[#c6c6cd]') : (isPrintable ? 'text-[#94a3b8]' : 'text-[#45464d]')}`}>
                       {r.NightOut || '—'}
                     </td>
-                    <td className="py-1.5 px-2">
+                    <td className="py-1.5 px-1.5">
                       <div className={`font-bold ${isPrintable ? 'text-[#0f172a]' : 'text-[#d4e4fa]'}`}>
-                        {manDayVal}
+                        {dayManDayVal}
                       </div>
                       {isSun && sundayHrsVal != null && (
-                        <div className={`text-[9px] font-sans ${isPrintable ? 'text-[#64748b]' : 'text-[#909097]'}`}>
+                        <div className={`text-[8.5px] font-sans ${isPrintable ? 'text-[#64748b]' : 'text-[#909097]'}`}>
                           {sundayHrsVal} hrs
                         </div>
                       )}
+                    </td>
+                    <td className="py-1.5 px-1.5">
+                      <div className={`font-bold ${parseFloat(nightManDayVal) > 0 ? (isPrintable ? 'text-[#d97706]' : 'text-amber-400') : (isPrintable ? 'text-[#94a3b8]' : 'text-[#45464d]')}`}>
+                        {nightManDayVal}
+                      </div>
                     </td>
                   </tr>
                 );

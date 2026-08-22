@@ -312,9 +312,10 @@ export class KamlaV1Parser extends BaseParser {
 
         if (!recordsMap.has(key)) {
           const isSunday = dateObj.isSunday;
-          const sundayHours = isSunday ? manHrs : 0;
-          const sundayRatio = isSunday ? parseFloat((manHrs / 5).toFixed(2)) : 0;
-          const weekdayManDay = isSunday ? 0 : manDays;
+          const sundayHours = isSunday ? (isNightShift ? 0 : manHrs) : 0;
+          const sundayRatio = isSunday ? (isNightShift ? 0 : parseFloat((manHrs / 5).toFixed(2))) : 0;
+          const weekdayManDay = isSunday ? 0 : (isNightShift ? 0 : manDays);
+          const nightManDay = isNightShift ? parseFloat((manHrs / 6).toFixed(3)) : 0;
 
           recordsMap.set(key, {
             blastFurnace: sheetName,
@@ -332,6 +333,7 @@ export class KamlaV1Parser extends BaseParser {
             nightOut: isNightShift ? rawOut : '',
             shiftType: isNightShift ? 'NIGHT' : (isSunday ? 'SUNDAY' : 'DAY'),
             weekdayManDay,
+            nightManDay,
             sundayHours,
             sundayRatio,
             manDay: isSunday ? sundayRatio : weekdayManDay,
@@ -341,9 +343,14 @@ export class KamlaV1Parser extends BaseParser {
           if (isNightShift) {
             existing.nightIn = rawIn || existing.nightIn;
             existing.nightOut = rawOut || existing.nightOut;
+            const shiftNightManDay = parseFloat((manHrs / 6).toFixed(3));
+            existing.nightManDay = parseFloat((existing.nightManDay + shiftNightManDay).toFixed(3));
           } else {
             existing.dayIn = rawIn || existing.dayIn;
             existing.dayOut = rawOut || existing.dayOut;
+            if (!dateObj.isSunday) {
+              existing.weekdayManDay = parseFloat((existing.weekdayManDay + manDays).toFixed(3));
+            }
           }
 
           if ((existing.dayIn || existing.dayOut) && (existing.nightIn || existing.nightOut)) {
@@ -353,13 +360,12 @@ export class KamlaV1Parser extends BaseParser {
           }
 
           if (dateObj.isSunday) {
-            existing.sundayHours = parseFloat((existing.sundayHours + manHrs).toFixed(2));
-            existing.sundayRatio = parseFloat((existing.sundayHours / 5).toFixed(2));
+            if (!isNightShift) {
+              existing.sundayHours = parseFloat((existing.sundayHours + manHrs).toFixed(2));
+              existing.sundayRatio = parseFloat((existing.sundayHours / 5).toFixed(2));
+            }
             existing.manDay = existing.sundayRatio;
           } else {
-            if (!existing.dayIn && !existing.dayOut) {
-              existing.weekdayManDay = parseFloat((existing.weekdayManDay + manDays).toFixed(3));
-            }
             existing.manDay = existing.weekdayManDay;
           }
         }

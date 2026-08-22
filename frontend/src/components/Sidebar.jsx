@@ -11,11 +11,20 @@ const Sidebar = ({ isMock, activeTab = 'attendance' }) => {
   return (
     <aside className="fixed left-0 top-0 h-screen w-[240px] bg-[#0d1c2d] border-r border-[#45464d]/20 z-50 flex flex-col py-8 select-none">
       {/* Brand Logo & Header */}
-      <div className="px-6 mb-5">
-        <h1 className="font-bold text-xl text-[#d4e4fa] tracking-tight">Kamla Enterprises</h1>
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-[#c6c6cd]/60 mt-0.5">
-          Labor Management
-        </p>
+      <div className="px-3 mb-6 flex items-center gap-3">
+        <div className="w-20 h-20 rounded-2xl bg-[#051424] p-1 border border-white/20 shrink-0 shadow-xl flex items-center justify-center overflow-hidden">
+          <img
+            src="/logo.png"
+            alt="Kamla Enterprises Logo"
+            className="w-full h-full object-contain"
+          />
+        </div>
+        <div>
+          <h1 className="font-black text-base text-white tracking-tight leading-snug">Kamla Enterprises</h1>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-white/70 mt-0.5">
+            Labor Management
+          </p>
+        </div>
       </div>
 
       {/* Active Plant Unit Indicator */}

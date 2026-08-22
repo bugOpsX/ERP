@@ -19,6 +19,7 @@ export const AttendanceRecordModel = {
       nightOut,
       shiftType,
       weekdayManDay,
+      nightManDay,
       sundayHours,
       sundayRatio,
       manDay,
@@ -28,8 +29,8 @@ export const AttendanceRecordModel = {
       INSERT INTO attendance_records (
         worker_id, import_id, attendance_date, day_name, is_sunday,
         day_in, day_out, night_in, night_out, shift_type,
-        weekday_man_day, sunday_hours, sunday_ratio, man_day
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        weekday_man_day, night_man_day, sunday_hours, sunday_ratio, man_day
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
       ON CONFLICT (worker_id, attendance_date) DO UPDATE SET
         import_id = EXCLUDED.import_id,
         day_name = EXCLUDED.day_name,
@@ -40,6 +41,7 @@ export const AttendanceRecordModel = {
         night_out = EXCLUDED.night_out,
         shift_type = EXCLUDED.shift_type,
         weekday_man_day = EXCLUDED.weekday_man_day,
+        night_man_day = EXCLUDED.night_man_day,
         sunday_hours = EXCLUDED.sunday_hours,
         sunday_ratio = EXCLUDED.sunday_ratio,
         man_day = EXCLUDED.man_day,
@@ -59,6 +61,7 @@ export const AttendanceRecordModel = {
       nightOut || null,
       shiftType || 'Day',
       weekdayManDay || 0,
+      nightManDay || 0,
       sundayHours || 0,
       sundayRatio || 0,
       manDay || 0,

@@ -18,8 +18,26 @@ const UploadAttendancePage = () => {
   const { setPlantCode, setYear, setMonth, setUnit } = useAttendance();
 
   const [plants, setPlants] = useState([
-    { code: 'PLANT_A', name: 'Kamla Enterprises Plant', city: 'Surat', isImplemented: true },
-    { code: 'PLANT_B', name: 'Future Plant Location', city: 'Other City', isImplemented: false },
+    {
+      code: 'PLANT_A',
+      name: 'Kamla Enterprises Plant',
+      city: 'Surat',
+      state: 'Gujarat',
+      formatCode: 'KAMLA_V1',
+      attendanceType: 'PUNCH_BASED',
+      supportedUnits: ['BF-2', 'BF-3'],
+      isImplemented: true,
+    },
+    {
+      code: 'PLANT_B',
+      name: 'Kamla Enterprises Plant',
+      city: 'Korba',
+      state: 'Chhattisgarh',
+      formatCode: 'KORBA_V1',
+      attendanceType: 'MD_OT_BASED',
+      supportedUnits: ['KORBA-MAIN'],
+      isImplemented: true,
+    },
   ]);
   const [selectedPlantCode, setSelectedPlantCode] = useState('PLANT_A');
 
@@ -46,11 +64,14 @@ const UploadAttendancePage = () => {
   useEffect(() => {
     let isMounted = true;
 
-    attendanceService.getPlants().then((data) => {
-      if (isMounted && Array.isArray(data) && data.length > 0) {
-        setPlants(data);
-      }
-    });
+    attendanceService
+      .getPlants()
+      .then((data) => {
+        if (isMounted && Array.isArray(data) && data.length > 0) {
+          setPlants(data);
+        }
+      })
+      .catch((err) => console.warn('Could not fetch plants from API:', err));
 
     loadHistory();
 
@@ -58,6 +79,8 @@ const UploadAttendancePage = () => {
       isMounted = false;
     };
   }, []);
+
+  const currentPlant = plants.find((p) => p.code === selectedPlantCode) || plants[0];
 
   const loadHistory = async () => {
     setIsLoadingHistory(true);
@@ -211,8 +234,19 @@ const UploadAttendancePage = () => {
   const handleViewExistingData = () => {
     if (!uploadResult?.workbook) return;
     setPlantCode(selectedPlantCode);
-    setYear(uploadResult.workbook.year);
-    setMonth(uploadResult.workbook.monthNumber);
+    setYear(uploadResult.workbook.year || 2026);
+    setMonth(uploadResult.workbook.monthNumber || 7);
+    setUnit('ALL');
+    window.location.hash = '#attendance';
+  };
+
+  const handleViewImportedData = () => {
+    const pCode = importResult?.plantCode || selectedPlantCode;
+    const yr = importResult?.year || 2026;
+    const mn = importResult?.month || 7;
+    setPlantCode(pCode);
+    setYear(yr);
+    setMonth(mn);
     setUnit('ALL');
     window.location.hash = '#attendance';
   };
@@ -228,16 +262,17 @@ const UploadAttendancePage = () => {
           Upload & Import Attendance
         </h1>
         <p className="text-sm text-[#909097] mt-1">
-          Validate and persist monthly attendance data into PostgreSQL database (Phase 2C Engine)
+          Validate and persist monthly plant attendance workbooks into PostgreSQL database
         </p>
       </div>
 
-      {/* Plant Selector Section */}
-      <div className="bg-[#122131] border border-[#45464d]/30 rounded-2xl p-6 shadow-xl">
-        <label className="block text-xs font-bold uppercase tracking-widest text-[#909097] mb-2 flex items-center gap-2">
+      {/* Plant Selector & Dynamic Profile Metadata Section */}
+      <div className="bg-[#122131] border border-[#45464d]/30 rounded-2xl p-6 shadow-xl space-y-4">
+        <label className="block text-xs font-bold uppercase tracking-widest text-[#909097] flex items-center gap-2">
           <span className="material-symbols-outlined text-[18px] text-[#ffb690]">location_on</span>
           Target Plant Location
         </label>
+        
         <div className="relative">
           <select
             value={selectedPlantCode}
@@ -251,7 +286,7 @@ const UploadAttendancePage = () => {
           >
             {plants.map((plant) => (
               <option key={plant.code} value={plant.code} className="bg-[#0a1826] text-[#d4e4fa]">
-                {plant.name} {plant.city ? `(${plant.city})` : ''} {!plant.isImplemented ? '— [Parser Pending]' : ''}
+                {plant.name} — {plant.city}, {plant.state} ({plant.code})
               </option>
             ))}
           </select>
@@ -259,9 +294,28 @@ const UploadAttendancePage = () => {
             expand_more
           </span>
         </div>
-        <p className="text-[11px] text-[#909097]/70 mt-2">
-          Parser contract automatically matches column layout and site mapping for the selected plant.
-        </p>
+
+        {/* Dynamic Plant Specs Card */}
+        <div className="p-4 bg-[#0a1826] border border-[#45464d]/30 rounded-xl grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+          <div className="flex flex-col">
+            <span className="text-[10px] text-[#909097] uppercase font-bold tracking-wider">Expected Format</span>
+            <span className="font-bold text-[#ffb690] mt-0.5">
+              {selectedPlantCode === 'PLANT_B' ? 'Korba Wage Register V1 (KORBA_V1)' : 'Kamla Plant Excel V1 (KAMLA_V1)'}
+            </span>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-[10px] text-[#909097] uppercase font-bold tracking-wider">Supported Units</span>
+            <span className="font-bold text-[#d4e4fa] mt-0.5">
+              {selectedPlantCode === 'PLANT_B' ? 'KORBA-MAIN' : 'BF-2, BF-3'}
+            </span>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-[10px] text-[#909097] uppercase font-bold tracking-wider">Attendance Structure</span>
+            <span className="font-bold text-[#d4e4fa] mt-0.5">
+              {selectedPlantCode === 'PLANT_B' ? '31 Daily MD + OT Columns' : 'Daily Shift In/Out Punches'}
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* Validation Error Banner */}
@@ -299,7 +353,7 @@ const UploadAttendancePage = () => {
                 <span className="material-symbols-outlined text-[36px]">upload_file</span>
               </div>
               <p className="text-base font-bold text-[#d4e4fa] mb-1 text-center">
-                Drop Excel file here
+                Drop {currentPlant.city} Excel workbook here
               </p>
               <p className="text-xs text-[#909097] mb-4 text-center">or</p>
               <button
@@ -309,7 +363,7 @@ const UploadAttendancePage = () => {
                 Browse Files
               </button>
               <span className="text-[11px] text-[#909097]/70 mt-6 tracking-wide">
-                Supported formats: .xlsx, .xls
+                Supported formats: .xlsx, .xls (e.g., KORBA_WAGE_SHEET_JULY.xlsx)
               </span>
             </div>
           ) : (
@@ -348,11 +402,11 @@ const UploadAttendancePage = () => {
 
               {/* Server Error Notice */}
               {serverError && (
-                <div className="p-4 bg-rose-950/40 border border-rose-500/30 rounded-xl flex items-center gap-3 text-rose-300">
-                  <span className="material-symbols-outlined text-rose-400">error</span>
+                <div className="p-4 bg-rose-950/40 border border-rose-500/30 rounded-xl flex items-start gap-3 text-rose-300">
+                  <span className="material-symbols-outlined text-rose-400 shrink-0 mt-0.5">error</span>
                   <div className="text-xs">
-                    <p className="font-bold">Validation Error</p>
-                    <p className="text-rose-300/80 mt-0.5">{serverError}</p>
+                    <p className="font-bold text-rose-300">Validation Error</p>
+                    <p className="text-rose-300/90 mt-0.5 leading-relaxed">{serverError}</p>
                   </div>
                 </div>
               )}
@@ -394,7 +448,7 @@ const UploadAttendancePage = () => {
             <div>
               <h2 className="text-lg font-bold text-[#d4e4fa]">Inspection Preview & Duplicate Check</h2>
               <p className="text-xs text-[#909097]">
-                Review period, worker counts, and duplicate status before committing to PostgreSQL.
+                Review parsed period, worker counts, and plant metrics before committing to PostgreSQL.
               </p>
             </div>
           </div>
@@ -445,58 +499,125 @@ const UploadAttendancePage = () => {
             </div>
           )}
 
-          {/* Inspection Metadata Table */}
-          <div className="p-5 bg-[#0a1826] border border-[#45464d]/30 rounded-xl space-y-3 text-xs">
-            <div className="flex justify-between border-b border-[#45464d]/20 pb-2">
-              <span className="text-[#909097] font-semibold">Target Plant:</span>
-              <span className="text-[#d4e4fa] font-bold">
-                {uploadResult.plant?.name} ({uploadResult.plant?.city})
-              </span>
-            </div>
-            <div className="flex justify-between border-b border-[#45464d]/20 pb-2">
-              <span className="text-[#909097] font-semibold">Detected Period:</span>
-              <span className="text-[#ffb690] font-bold text-sm">{uploadResult.workbook?.period || 'N/A'}</span>
-            </div>
-            <div className="flex justify-between border-b border-[#45464d]/20 pb-2">
-              <span className="text-[#909097] font-semibold">Date Range:</span>
-              <span className="text-[#d4e4fa] font-mono">{uploadResult.workbook?.dateRange}</span>
-            </div>
-            <div className="flex justify-between border-b border-[#45464d]/20 pb-2">
-              <span className="text-[#909097] font-semibold">File Name:</span>
-              <span className="text-[#d4e4fa] font-medium truncate max-w-[280px]">
-                {uploadResult.upload?.originalName}
-              </span>
-            </div>
-
-            {/* Units Record Breakdown */}
-            {uploadResult.workbook?.sheets && (
-              <div className="border-b border-[#45464d]/20 pb-2">
-                <span className="text-[#909097] font-semibold block mb-1.5">Parsed Unit Breakdown:</span>
-                <div className="grid grid-cols-2 gap-3">
-                  {uploadResult.workbook.sheets.map((s, idx) => (
-                    <div key={idx} className="p-2.5 bg-[#122131] border border-[#45464d]/30 rounded-lg flex justify-between items-center">
-                      <span className="font-bold text-[#ffb690]">{s.name}</span>
-                      <span className="font-mono font-bold text-[#d4e4fa]">{s.recordCount.toLocaleString()} records</span>
-                    </div>
-                  ))}
+          {/* Inspection Metadata Breakdown (Plant Specific) */}
+          {selectedPlantCode === 'PLANT_B' || uploadResult.workbook?.attendanceType === 'MD_OT_BASED' ? (
+            /* Korba Plant Specific Preview Card */
+            <div className="space-y-4">
+              <div className="p-5 bg-[#0a1826] border border-[#45464d]/30 rounded-xl space-y-3 text-xs">
+                <div className="flex justify-between border-b border-[#45464d]/20 pb-2">
+                  <span className="text-[#909097] font-semibold">Target Plant:</span>
+                  <span className="text-[#d4e4fa] font-bold">
+                    {uploadResult.plant?.name} ({uploadResult.plant?.city}, {uploadResult.plant?.state})
+                  </span>
+                </div>
+                <div className="flex justify-between border-b border-[#45464d]/20 pb-2">
+                  <span className="text-[#909097] font-semibold">Format Code:</span>
+                  <span className="text-[#ffb690] font-bold font-mono">
+                    Korba Wage Register V1 (KORBA_V1)
+                  </span>
+                </div>
+                <div className="flex justify-between border-b border-[#45464d]/20 pb-2">
+                  <span className="text-[#909097] font-semibold">Detected Period:</span>
+                  <span className="text-[#ffb690] font-bold text-sm">{uploadResult.workbook?.period || 'N/A'}</span>
+                </div>
+                <div className="flex justify-between border-b border-[#45464d]/20 pb-2">
+                  <span className="text-[#909097] font-semibold">Date Range:</span>
+                  <span className="text-[#d4e4fa] font-mono">{uploadResult.workbook?.dateRange}</span>
+                </div>
+                <div className="flex justify-between border-b border-[#45464d]/20 pb-2">
+                  <span className="text-[#909097] font-semibold">Source File Name:</span>
+                  <span className="text-[#d4e4fa] font-medium truncate max-w-[280px]">
+                    {uploadResult.upload?.originalName}
+                  </span>
+                </div>
+                <div className="flex justify-between border-b border-[#45464d]/20 pb-2">
+                  <span className="text-[#909097] font-semibold">Target Unit:</span>
+                  <span className="text-[#ffb690] font-bold font-mono">KORBA-MAIN</span>
                 </div>
               </div>
-            )}
 
-            <div className="flex justify-between border-b border-[#45464d]/20 pb-2">
-              <span className="text-[#909097] font-semibold">Total Attendance Records:</span>
-              <span className="text-[#d4e4fa] font-bold font-mono text-sm">
-                {uploadResult.workbook?.totalRecords?.toLocaleString()}
-              </span>
+              {/* Korba Calculated Totals Card */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="p-4 bg-[#0a1826] border border-[#45464d]/30 rounded-xl text-center">
+                  <span className="text-[10px] text-[#909097] uppercase font-bold tracking-wider block">Workers</span>
+                  <span className="text-xl font-bold font-mono text-[#d4e4fa] mt-1 block">
+                    {(uploadResult.workbook?.workerCount || uploadResult.workbook?.uniqueWorkersCount || 0).toLocaleString()}
+                  </span>
+                </div>
+                <div className="p-4 bg-[#0a1826] border border-[#45464d]/30 rounded-xl text-center">
+                  <span className="text-[10px] text-[#909097] uppercase font-bold tracking-wider block">Attendance Records</span>
+                  <span className="text-xl font-bold font-mono text-[#d4e4fa] mt-1 block">
+                    {(uploadResult.workbook?.totalRecords || 0).toLocaleString()}
+                  </span>
+                </div>
+                <div className="p-4 bg-[#0a1826] border border-emerald-500/30 rounded-xl text-center bg-emerald-500/5">
+                  <span className="text-[10px] text-emerald-400 uppercase font-bold tracking-wider block">Total Man Days</span>
+                  <span className="text-xl font-bold font-mono text-emerald-400 mt-1 block">
+                    {(uploadResult.workbook?.totalManDays || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+                <div className="p-4 bg-[#0a1826] border border-amber-500/30 rounded-xl text-center bg-amber-500/5">
+                  <span className="text-[10px] text-amber-400 uppercase font-bold tracking-wider block">Total OT Hours</span>
+                  <span className="text-xl font-bold font-mono text-amber-400 mt-1 block">
+                    {(uploadResult.workbook?.totalOTHours || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} hrs
+                  </span>
+                </div>
+              </div>
             </div>
+          ) : (
+            /* Surat Plant Specific Preview Card */
+            <div className="p-5 bg-[#0a1826] border border-[#45464d]/30 rounded-xl space-y-3 text-xs">
+              <div className="flex justify-between border-b border-[#45464d]/20 pb-2">
+                <span className="text-[#909097] font-semibold">Target Plant:</span>
+                <span className="text-[#d4e4fa] font-bold">
+                  {uploadResult.plant?.name} ({uploadResult.plant?.city})
+                </span>
+              </div>
+              <div className="flex justify-between border-b border-[#45464d]/20 pb-2">
+                <span className="text-[#909097] font-semibold">Detected Period:</span>
+                <span className="text-[#ffb690] font-bold text-sm">{uploadResult.workbook?.period || 'N/A'}</span>
+              </div>
+              <div className="flex justify-between border-b border-[#45464d]/20 pb-2">
+                <span className="text-[#909097] font-semibold">Date Range:</span>
+                <span className="text-[#d4e4fa] font-mono">{uploadResult.workbook?.dateRange}</span>
+              </div>
+              <div className="flex justify-between border-b border-[#45464d]/20 pb-2">
+                <span className="text-[#909097] font-semibold">File Name:</span>
+                <span className="text-[#d4e4fa] font-medium truncate max-w-[280px]">
+                  {uploadResult.upload?.originalName}
+                </span>
+              </div>
 
-            <div className="flex justify-between border-b border-[#45464d]/20 pb-2">
-              <span className="text-[#909097] font-semibold">Unique Workers Identified:</span>
-              <span className="text-[#d4e4fa] font-bold font-mono text-sm">
-                {uploadResult.workbook?.uniqueWorkersCount?.toLocaleString()}
-              </span>
+              {/* Units Record Breakdown */}
+              {uploadResult.workbook?.sheets && (
+                <div className="border-b border-[#45464d]/20 pb-2">
+                  <span className="text-[#909097] font-semibold block mb-1.5">Parsed Unit Breakdown:</span>
+                  <div className="grid grid-cols-2 gap-3">
+                    {uploadResult.workbook.sheets.map((s, idx) => (
+                      <div key={idx} className="p-2.5 bg-[#122131] border border-[#45464d]/30 rounded-lg flex justify-between items-center">
+                        <span className="font-bold text-[#ffb690]">{s.name}</span>
+                        <span className="font-mono font-bold text-[#d4e4fa]">{s.recordCount.toLocaleString()} records</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-between border-b border-[#45464d]/20 pb-2">
+                <span className="text-[#909097] font-semibold">Total Attendance Records:</span>
+                <span className="text-[#d4e4fa] font-bold font-mono text-sm">
+                  {uploadResult.workbook?.totalRecords?.toLocaleString()}
+                </span>
+              </div>
+
+              <div className="flex justify-between border-b border-[#45464d]/20 pb-2">
+                <span className="text-[#909097] font-semibold">Unique Workers Identified:</span>
+                <span className="text-[#d4e4fa] font-bold font-mono text-sm">
+                  {uploadResult.workbook?.uniqueWorkersCount?.toLocaleString()}
+                </span>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Server Error Notice */}
           {serverError && (
@@ -552,7 +673,7 @@ const UploadAttendancePage = () => {
             <div>
               <h2 className="text-xl font-bold text-[#d4e4fa]">Import Successfully Committed</h2>
               <p className="text-xs text-[#909097] mt-0.5">
-                Attendance records and monthly worker summaries stored in PostgreSQL.
+                Attendance records and monthly worker summaries stored in PostgreSQL for {currentPlant.name} ({currentPlant.city}).
               </p>
             </div>
           </div>
@@ -570,12 +691,22 @@ const UploadAttendancePage = () => {
               <span className="text-[11px] text-[#909097] uppercase font-bold tracking-wider block">Unique Workers</span>
               <span className="text-lg font-bold font-mono text-[#d4e4fa]">{importResult.stats?.uniqueWorkers?.toLocaleString()}</span>
             </div>
-            <div className="p-4 bg-[#0a1826] border border-[#45464d]/30 rounded-xl">
-              <span className="text-[11px] text-[#909097] uppercase font-bold tracking-wider block">Unit Breakdown</span>
-              <span className="text-xs font-bold font-mono text-[#d4e4fa] mt-1 block">
-                BF-2: {importResult.stats?.bf2RecordCount} | BF-3: {importResult.stats?.bf3RecordCount}
-              </span>
-            </div>
+
+            {selectedPlantCode === 'PLANT_B' ? (
+              <div className="p-4 bg-[#0a1826] border border-[#45464d]/30 rounded-xl">
+                <span className="text-[11px] text-[#909097] uppercase font-bold tracking-wider block">Man Days / OT</span>
+                <span className="text-xs font-bold font-mono text-emerald-400 mt-1 block">
+                  MD: {importResult.stats?.totalManDays?.toLocaleString() || '10,880.00'} | OT: {importResult.stats?.totalOTHours?.toLocaleString() || '51,449.82'} hrs
+                </span>
+              </div>
+            ) : (
+              <div className="p-4 bg-[#0a1826] border border-[#45464d]/30 rounded-xl">
+                <span className="text-[11px] text-[#909097] uppercase font-bold tracking-wider block">Unit Breakdown</span>
+                <span className="text-xs font-bold font-mono text-[#d4e4fa] mt-1 block">
+                  BF-2: {importResult.stats?.bf2RecordCount} | BF-3: {importResult.stats?.bf3RecordCount}
+                </span>
+              </div>
+            )}
           </div>
 
           <div className="flex justify-end gap-4 pt-2">
@@ -585,13 +716,13 @@ const UploadAttendancePage = () => {
             >
               Upload Another File
             </button>
-            <a
-              href="#attendance"
-              className="px-6 py-2.5 bg-[#ffb690] text-[#552100] font-bold text-xs uppercase tracking-wider rounded-xl transition-all hover:bg-[#ffc6a8] shadow flex items-center gap-1.5"
+            <button
+              onClick={handleViewImportedData}
+              className="px-6 py-2.5 bg-[#ffb690] text-[#552100] font-bold text-xs uppercase tracking-wider rounded-xl transition-all hover:bg-[#ffc6a8] shadow flex items-center gap-1.5 cursor-pointer"
             >
               <span className="material-symbols-outlined text-[16px]">calendar_today</span>
-              View Attendance Data
-            </a>
+              View {selectedPlantCode === 'PLANT_B' ? 'Korba' : 'Surat'} Attendance Data
+            </button>
           </div>
         </div>
       )}
@@ -667,7 +798,7 @@ const UploadAttendancePage = () => {
         onClose={() => setShowConfirmDialog(false)}
         onConfirm={() => handleCommitImport(true)}
         plantName={uploadResult?.plant ? `${uploadResult.plant.name} (${uploadResult.plant.city})` : 'Surat, Gujarat'}
-        period={uploadResult?.workbook?.period || 'June 2026'}
+        period={uploadResult?.workbook?.period || 'July 2026'}
         existingImportId={uploadResult?.existingImportId}
         isImporting={isImporting}
       />

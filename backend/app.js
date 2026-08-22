@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
+import compression from 'compression';
 
 import webhookConfig from './config/webhook.js';
 import attendanceRoutes from './routes/attendance.routes.js';
@@ -13,6 +14,8 @@ import { requireAuth } from './src/middleware/auth.middleware.js';
 import errorHandler from './middleware/errorHandler.js';
 
 const app = express();
+
+app.use(compression());
 
 app.use(cors({
   origin: [
