@@ -50,7 +50,7 @@ export const authController = {
     res.clearCookie(COOKIE_NAME, {
       httpOnly: true,
       secure: isProduction,
-      sameSite: 'lax',
+      sameSite: isProduction ? 'none' : 'lax',
       path: '/',
     });
 

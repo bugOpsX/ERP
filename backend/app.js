@@ -15,19 +15,40 @@ import errorHandler from './middleware/errorHandler.js';
 
 const app = express();
 
-app.use(compression());
+app.set('trust proxy', 1);
 
-app.use(cors({
-  origin: [
-    'https://attendance.bugopsx.in',
-    'http://localhost:5173',
-    'http://127.0.0.1:5173'
-  ],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  exposedHeaders: ['X-Mock-Data']
-}));
+const defaultAllowedOrigins = [
+  'https://attendance.bugopsx.in',
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+];
+
+const customOrigins = (process.env.ALLOWED_ORIGINS || process.env.FRONTEND_URL || '')
+  .split(',')
+  .map((url) => url.trim())
+  .filter(Boolean);
+
+const allowedOrigins = Array.from(new Set([...defaultAllowedOrigins, ...customOrigins]));
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      if (
+        allowedOrigins.includes(origin) ||
+        origin.endsWith('.vercel.app') ||
+        process.env.NODE_ENV !== 'production'
+      ) {
+        return callback(null, true);
+      }
+      return callback(null, true);
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    exposedHeaders: ['X-Mock-Data'],
+  })
+);
 
 app.use(express.json());
 app.use(cookieParser());
